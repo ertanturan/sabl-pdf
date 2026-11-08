@@ -81,4 +81,5 @@ def test_click_places_text_box_on_scrolled_page(tmp_path, monkeypatch) -> None:
     assert len(window.text_boxes.list(0)) == 0
     assert len(window.text_boxes.list(1)) == 1
     assert window.text_boxes.list(1)[0].content == "Test box"
+    monkeypatch.setattr(window, "_confirm_changes", lambda: True)
     window.close()
