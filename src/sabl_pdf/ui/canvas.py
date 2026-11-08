@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 class PdfCanvas(QGraphicsView):
     area_selected = Signal(int, tuple)
     page_changed = Signal(int)
+    selection_cancelled = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -18,6 +19,7 @@ class PdfCanvas(QGraphicsView):
         self._page_items: dict[int, object] = {}
         self._render_page: Callable | None = None
         self._selection_enabled = False
+        self._click_size: tuple[float, float] | None = None
         self._origin = None
         self._origin_page: int | None = None
         self._rubber_band = None
@@ -93,8 +95,11 @@ class PdfCanvas(QGraphicsView):
         self.centerOn(rect.center().x(), rect.top() + self.viewport().height() / 2)
         self._viewport_changed()
 
-    def set_selection_enabled(self, enabled: bool) -> None:
+    def set_selection_enabled(
+        self, enabled: bool, click_size: tuple[float, float] | None = None
+    ) -> None:
         self._selection_enabled = enabled
+        self._click_size = click_size if enabled else None
         self._origin = None
         self._origin_page = None
 
@@ -114,7 +119,11 @@ class PdfCanvas(QGraphicsView):
         return None
 
     def mousePressEvent(self, event) -> None:
-        if self._selection_enabled:
+        if self._selection_enabled and event.button().name == "RightButton":
+            self._cancel_selection()
+            event.accept()
+            return
+        if self._selection_enabled and event.button().name == "LeftButton":
             position = self.mapToScene(event.position().toPoint())
             page = self._page_at(position)
             if page is not None:
@@ -135,12 +144,24 @@ class PdfCanvas(QGraphicsView):
             return
         super().mouseMoveEvent(event)
 
+    def _cancel_selection(self) -> None:
+        if self._rubber_band is not None:
+            self._scene.removeItem(self._rubber_band)
+            self._rubber_band = None
+        self.set_selection_enabled(False)
+        self.selection_cancelled.emit()
+
     def mouseReleaseEvent(self, event) -> None:
         if self._selection_enabled and self._origin is not None and self._origin_page is not None:
             page_index = self._origin_page
             page_rect = self._page_rects[page_index]
             end = self.mapToScene(event.position().toPoint())
             rect = QRectF(self._origin, end).normalized().intersected(page_rect)
+            if rect.width() < 2 and rect.height() < 2 and self._click_size is not None:
+                width, height = self._click_size
+                rect = QRectF(
+                    end.x(), end.y(), width * self._zoom, height * self._zoom
+                ).intersected(page_rect)
             if self._rubber_band is not None:
                 self._scene.removeItem(self._rubber_band)
                 self._rubber_band = None

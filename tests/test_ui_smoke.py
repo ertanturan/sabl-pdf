@@ -48,3 +48,37 @@ def test_scrolls_through_all_pdf_pages(tmp_path) -> None:
     assert window.page_index == 3
     assert 3 in window.canvas._page_items
     window.close()
+
+def test_click_places_text_box_on_scrolled_page(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication, QInputDialog
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "two-pages.pdf"
+    with fitz.open() as document:
+        document.new_page(width=300, height=450)
+        document.new_page(width=300, height=450)
+        document.save(path)
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.resize(540, 460)
+    window.show()
+    window.open_path(path)
+    window.canvas.scroll_to_page(1)
+    application.processEvents()
+
+    monkeypatch.setattr(QInputDialog, "getMultiLineText", lambda *args: ("Test box", True))
+    window.add_text_box()
+    page = window.canvas._page_rects[1]
+    point = window.canvas.mapFromScene(page.left() + 30, page.top() + 35)
+    QTest.mouseClick(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=point)
+    application.processEvents()
+
+    assert len(window.text_boxes.list(0)) == 0
+    assert len(window.text_boxes.list(1)) == 1
+    assert window.text_boxes.list(1)[0].content == "Test box"
+    window.close()
