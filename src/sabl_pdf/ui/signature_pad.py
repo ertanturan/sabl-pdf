@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QPainter, QPen
-from PySide6.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QDialog, QDialogButtonBox, QPushButton, QVBoxLayout, QWidget
 
 
 class SignatureSurface(QWidget):
@@ -9,6 +9,14 @@ class SignatureSurface(QWidget):
         self.setMinimumSize(450, 160)
         self.strokes: list[list[tuple[float, float]]] = []
         self.setAutoFillBackground(True)
+
+    def set_strokes(self, strokes: list[list[tuple[float, float]]]) -> None:
+        self.strokes = [list(stroke) for stroke in strokes]
+        self.update()
+
+    def clear(self) -> None:
+        self.strokes.clear()
+        self.update()
 
     def _point(self, position) -> tuple[float, float]:
         return (
@@ -40,12 +48,18 @@ class SignatureSurface(QWidget):
 
 
 class SignatureDialog(QDialog):
-    def __init__(self, parent=None) -> None:
+    def __init__(
+        self, parent=None, strokes: list[list[tuple[float, float]]] | None = None
+    ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Draw signature")
         layout = QVBoxLayout(self)
         self.surface = SignatureSurface()
+        self.surface.set_strokes(strokes or [])
         layout.addWidget(self.surface)
+        clear = QPushButton("Clear", self)
+        clear.clicked.connect(self.surface.clear)
+        layout.addWidget(clear)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
         )

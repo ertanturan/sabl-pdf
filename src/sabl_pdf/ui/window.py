@@ -46,6 +46,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.canvas = PdfCanvas()
         self.canvas.area_selected.connect(self._on_area_selected)
         self.canvas.page_changed.connect(self._on_page_changed)
+        self.canvas.selection_cancelled.connect(self._on_selection_cancelled)
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -81,6 +82,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         signatures = self.menuBar().addMenu("Signatures")
         self._action(signatures, "Import signature image", self.import_signature)
         self._action(signatures, "Draw signature", self.draw_signature)
+        self._action(signatures, "Use saved signature", self.use_saved_signature)
         pages = self.menuBar().addMenu("Pages")
         self._action(pages, "Merge PDF", self.merge_pdf)
         self._action(pages, "Split page range", self.split_pdf)
@@ -183,12 +185,24 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         event.accept()
 
 
-    def _select_area(self, callback: Callable[[tuple], None]) -> None:
+    def _select_area(
+        self,
+        callback: Callable[[tuple], None],
+        click_size: tuple[float, float] | None = None,
+        preview_strokes: list[list[tuple[float, float]]] | None = None,
+    ) -> None:
         if not self._require_document():
             return
         self._selection_action = callback
-        self.canvas.set_selection_enabled(True)
-        self.status.setText("Drag a rectangle on the page")
+        self.canvas.set_selection_enabled(True, click_size, preview_strokes)
+        self.status.setText(
+            "Click to place or drag to size; right-click to cancel"
+            if click_size else "Drag a rectangle on the page; right-click to cancel"
+        )
+
+    def _on_selection_cancelled(self) -> None:
+        self._selection_action = None
+        self._update_page_status()
 
 
     def _on_area_selected(self, page_index: int, rect: tuple) -> None:
