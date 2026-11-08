@@ -196,7 +196,8 @@ def test_inline_find_navigates_and_clears_highlight(tmp_path) -> None:
     assert window.search_bar.results.text() == "1 of 2"
     assert window.canvas._search_highlight is not None
 
-    window._move_search(1)
+    from PySide6.QtWidgets import QToolButton
+    window.search_bar.findChild(QToolButton, "search_next").click()
 
     assert window.page_index == 1
     assert window.search_bar.results.text() == "2 of 2"

@@ -35,7 +35,8 @@ class SearchBar(QWidget):
         button = QToolButton(self)
         button.setText(text)
         button.setToolTip(tooltip)
-        button.clicked.connect(callback)
+        button.setObjectName(f"search_{tooltip.split()[0].lower()}")
+        button.clicked.connect(lambda _checked=False: callback())
         layout.addWidget(button)
 
     def _schedule_search(self, _text: str) -> None:
@@ -49,6 +50,10 @@ class SearchBar(QWidget):
         self.show()
         self.search_input.setFocus()
         self.search_input.selectAll()
+
+    def dismiss(self) -> None:
+        self._timer.stop()
+        self.hide()
 
     def set_position(self, index: int, count: int) -> None:
         self.results.setText(f"{index + 1} of {count}" if count else "No matches")

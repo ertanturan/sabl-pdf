@@ -81,7 +81,7 @@ class ViewerActions:
         self.canvas.highlight(match.bounds, match.page)
 
     def _close_search(self) -> None:
-        self.search_bar.hide()
+        self.search_bar.dismiss()
         self._search_matches = []
         self._search_index = -1
         self.canvas.clear_search_highlight()
