@@ -9,7 +9,7 @@ class TextActions:
             if accepted and text.strip():
                 self.text_boxes.add(self.page_index, bounds, text)
                 self._after_edit()
-        self._select_area(add, click_size=(190, 55), tool_name="Add Text")
+        self._select_area(add, click_size=(190, 55), preview_label="Text", tool_name="Add Text")
 
     def _choose_text_box(self) -> int | None:
         if not self._require_document():
