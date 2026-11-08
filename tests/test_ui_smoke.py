@@ -126,3 +126,26 @@ def test_signature_click_place_cancel_and_reuse(tmp_path, monkeypatch) -> None:
     assert window._load_saved_signature() == strokes
     monkeypatch.setattr(window, "_confirm_changes", lambda: True)
     window.close()
+
+def test_damaged_pdf_shows_single_warning(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication, QMessageBox
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "broken.pdf"
+    with fitz.open() as document:
+        document.new_page().insert_text((30, 30), "Missing")
+        data = document.tobytes()
+    path.write_bytes(data.replace(b"Contents[6 0 R]", b"Contents[9 0 R]"))
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    messages = []
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: messages.append(args[2]))
+
+    window.open_path(path)
+
+    assert window.viewer.page_count() == 1
+    assert len(messages) == 1
+    assert "damaged or missing" in messages[0]
+    window.close()

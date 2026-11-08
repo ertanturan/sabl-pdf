@@ -73,12 +73,18 @@ class PdfCanvas(QGraphicsView):
     def _load_page(self, index: int, rect: QRectF) -> None:
         if self._render_page is None:
             return
-        pixmap = self._render_page(index)
-        image = QImage(
-            pixmap.samples, pixmap.width, pixmap.height,
-            pixmap.stride, QImage.Format.Format_RGB888,
-        ).copy()
-        item = self._scene.addPixmap(QPixmap.fromImage(image))
+        try:
+            pixmap = self._render_page(index)
+        except (RuntimeError, ValueError):
+            item = self._scene.addText(
+                f"Page {index + 1} could not be displayed. The PDF may be damaged."
+            )
+        else:
+            image = QImage(
+                pixmap.samples, pixmap.width, pixmap.height,
+                pixmap.stride, QImage.Format.Format_RGB888,
+            ).copy()
+            item = self._scene.addPixmap(QPixmap.fromImage(image))
         item.setPos(rect.topLeft())
         self._page_items[index] = item
 

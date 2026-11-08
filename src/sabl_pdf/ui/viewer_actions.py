@@ -17,6 +17,12 @@ class ViewerActions:
             self.session.open(path)
             self.page_index = 0
             self._refresh()
+            if self.session.open_warnings:
+                QMessageBox.warning(
+                    self, "PDF warnings",
+                    "This PDF contains damaged or missing objects. Some content may be "
+                    "unavailable. Review the pages and use Save as to keep the original.",
+                )
         self._run(action)
 
     def save_pdf(self) -> None:
