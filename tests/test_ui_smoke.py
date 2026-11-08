@@ -465,3 +465,103 @@ def test_drag_text_box_on_page(sample_pdf, monkeypatch) -> None:
     assert abs(moved[0].bounds[1] - 110) < 2
     monkeypatch.setattr(window, "_confirm_changes", lambda: True)
     window.close()
+
+
+def test_text_preview_tracks_cursor_and_matches_placement(sample_pdf, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication, QInputDialog
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(sample_pdf)
+    monkeypatch.setattr(QInputDialog, "getMultiLineText", lambda *args: ("Preview", True))
+
+    window.add_text_box()
+    page = window.canvas._page_rects[0]
+    hover = window.canvas.mapFromScene(page.right() - 15, page.top() + 70)
+    QTest.mouseMove(window.canvas.viewport(), hover)
+    application.processEvents()
+
+    item = window.canvas._preview_item
+    assert item is not None
+    assert item.isVisible()
+    assert item.pos().x() <= page.right() - 190 * window.zoom + 1
+
+    left = (item.pos().x() - page.left()) / window.zoom
+    top = (item.pos().y() - page.top()) / window.zoom
+    QTest.mouseClick(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=hover)
+
+    bounds = window.text_boxes.list(0)[0].bounds
+    assert bounds[0] == pytest.approx(left, abs=1)
+    assert bounds[1] == pytest.approx(top, abs=1)
+    assert window.canvas._preview_item is None
+    monkeypatch.setattr(window, "_confirm_changes", lambda: True)
+    window.close()
+
+
+def test_imported_signature_previews_image_and_right_click_cancels(
+    sample_pdf, tmp_path, monkeypatch
+) -> None:
+    pytest.importorskip("PySide6")
+    from PIL import Image
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication, QFileDialog
+    from PySide6.QtWidgets import QGraphicsPixmapItem
+    from sabl_pdf.ui.window import MainWindow
+
+    image = tmp_path / "sign.png"
+    Image.new("RGBA", (60, 20), (0, 0, 0, 255)).save(image)
+    monkeypatch.setattr(QFileDialog, "getOpenFileName", lambda *args: (str(image), ""))
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(sample_pdf)
+
+    window.import_signature()
+    page = window.canvas._page_rects[0]
+    hover = window.canvas.mapFromScene(page.left() + 40, page.top() + 80)
+    QTest.mouseMove(window.canvas.viewport(), hover)
+    application.processEvents()
+
+    assert isinstance(window.canvas._preview_item, QGraphicsPixmapItem)
+    assert window.canvas._preview_item.isVisible()
+    QTest.mouseClick(window.canvas.viewport(), Qt.MouseButton.RightButton, pos=hover)
+
+    assert window.canvas._preview_item is None
+    assert not list(window.session.document[0].annots() or ())
+    window.close()
+
+
+def test_note_placement_has_cursor_preview(sample_pdf, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication, QInputDialog
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(sample_pdf)
+    monkeypatch.setattr(QInputDialog, "getMultiLineText", lambda *args: ("Remember", True))
+
+    window.add_note()
+    page = window.canvas._page_rects[0]
+    click = window.canvas.mapFromScene(page.left() + 70, page.top() + 130)
+    QTest.mouseMove(window.canvas.viewport(), click)
+    application.processEvents()
+
+    assert window.canvas._preview_item is not None
+    assert window.canvas._preview_item.isVisible()
+
+    QTest.mouseClick(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=click)
+
+    assert len(list(window.session.document[0].annots() or ())) == 1
+    assert window.canvas._preview_item is None
+    monkeypatch.setattr(window, "_confirm_changes", lambda: True)
+    window.close()
