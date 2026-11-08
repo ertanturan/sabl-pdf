@@ -48,7 +48,6 @@ class SignatureService:
         return rect
 
     def _embed_image(self, pixmap: fitz.Pixmap) -> int:
-        doc = self._session.document
         raw = pixmap.samples
         if pixmap.alpha:
             rgb = b"".join(raw[index:index + 3] for index in range(0, len(raw), 4))
