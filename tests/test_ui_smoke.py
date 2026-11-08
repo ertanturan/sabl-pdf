@@ -169,3 +169,40 @@ def test_quick_access_and_navigation_toolbars() -> None:
     assert window.findChild(QToolBar, "quick_access") is not None
     assert window.findChild(QToolBar, "page_navigation") is not None
     window.close()
+
+
+def test_inline_find_navigates_and_clears_highlight(tmp_path) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "searchable.pdf"
+    with fitz.open() as document:
+        for _ in range(2):
+            document.new_page().insert_text((72, 72), "needle in a document")
+        document.save(path)
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(path)
+    window.search_text()
+    window.search_bar.search_input.setText("needle")
+    window._search_query("needle")
+
+    assert application is not None
+    assert window.search_bar.isVisible()
+    assert window.search_bar.results.text() == "1 of 2"
+    assert window.canvas._search_highlight is not None
+
+    window._move_search(1)
+
+    assert window.page_index == 1
+    assert window.search_bar.results.text() == "2 of 2"
+
+    window._close_search()
+
+    assert not window.search_bar.isVisible()
+    assert window.canvas._search_highlight is None
+    window.close()
