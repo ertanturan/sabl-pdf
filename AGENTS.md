@@ -9,6 +9,7 @@
 ## Architecture
 - Organise production code as a `src/sabl_pdf` Python package.
 - Keep PDF operations in small, independently testable service classes; the PySide6 UI only coordinates them.
+- Each method performs one narrowly defined unit of work. Extract distinct operations into named helpers or collaborators.
 - Use object-oriented design; follow SOLID principles, especially single responsibility and dependency inversion.
 - Inject dependencies where appropriate. Keep pure business logic independent of widgets.
 - Use descriptive public API names, explicit exceptions and typing.
@@ -25,7 +26,8 @@
 - One logical work package per commit. If a proposed commit message needs the word "and", split the commit into smaller commits.
 - Use small, imperative commits such as `feat: render PDF page` or `test: cover PDF zoom`.
 - Keep refactors separate from feature commits. Do not mix unrelated bug fixes.
-- Do not merge stacked PRs until earlier PRs are reviewed.
+- Never create or reopen pull requests without explicit user approval, except when asked to restore existing pull requests.
+- Never merge pull requests. The repository owner merges manually after required CI checks pass.
 
 ## Change logs
 - Record EVERY feature and bug fix in `docs/changes/YYYY-MM-DD.md` using the date of the change.
@@ -39,7 +41,8 @@
 - Never collect analytics or send user files off-device.
 
 ## Main branch protection
-- Changes reach master through reviewed PRs only, after the `unit-tests` status check passes.
-- Root `manifest.json` describes the GitHub ruleset, but must be applied using repository admin permissions.
-- CODEOWNERS requests @ertanturan's review; GitHub does not permit self-approval of a PR you authored.
+- Changes reach master through pull requests only, after the `unit-tests` status check passes.
+- The repository owner may merge their own PRs manually. No approving review is required.
+- Root `manifest.json` describes the GitHub ruleset, but the active ruleset must be updated separately through GitHub settings.
+- CODEOWNERS identifies maintainers without requiring an approval.
 - Stacked dependencies must be respected before cleanup deletes a merged branch.
