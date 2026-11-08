@@ -226,3 +226,34 @@ def test_welcome_screen_switches_to_pdf_viewer(sample_pdf) -> None:
 
     assert window.workspace.currentWidget() is window.canvas
     window.close()
+
+
+def test_page_thumbnails_select_and_follow_pages(tmp_path) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "thumbnail-pages.pdf"
+    with fitz.open() as document:
+        for number in range(3):
+            document.new_page(width=350, height=450).insert_text((30, 30), str(number))
+        document.save(path)
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(path)
+    application.processEvents()
+
+    assert window.thumbnails.pages.count() == 3
+    assert window.thumbnails.isVisible()
+
+    window.thumbnails.pages.setCurrentRow(2)
+    application.processEvents()
+
+    assert window.page_index == 2
+    window.canvas.scroll_to_page(1)
+    application.processEvents()
+    assert window.thumbnails.pages.currentRow() == 1
+    window.close()
