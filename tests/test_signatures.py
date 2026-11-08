@@ -16,7 +16,8 @@ def test_import_signature_image(session: DocumentSession, tmp_path: Path) -> Non
 
     import fitz
 
-    annots = list(session.document[0].annots() or ())
+    page = session.document[0]
+    annots = list(page.annots() or ())
     assert len(annots) == 1
     assert annots[0].type[0] == fitz.PDF_ANNOT_STAMP
     assert session.dirty
@@ -29,7 +30,8 @@ def test_draw_signature(session: DocumentSession) -> None:
 
     import fitz
 
-    annots = list(session.document[0].annots() or ())
+    page = session.document[0]
+    annots = list(page.annots() or ())
     assert len(annots) == 1
     assert annots[0].type[0] == fitz.PDF_ANNOT_INK
 
