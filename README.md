@@ -17,22 +17,19 @@ No account. No advertising. No telemetry. No subscriptions.
 
 Existing PDF page text is not edited in-place. Newly added text remains editable until the annotation is flattened externally. Signatures are visual marks, not certificate-based digital signatures.
 
-## Development
+## Local development on Windows
 
-Requires Python 3.12+.
+Requires Python 3.12+ installed and available through `py` or `python`. Double-click these files in the repository root:
 
-```powershell
-python -m pip install -e ".[dev]"
-$env:QT_QPA_PLATFORM = "offscreen"
-python -m pytest -q
-python -m sabl_pdf.main
-```
+| File | Action |
+| --- | --- |
+| `run.cmd` | Create or reuse `.venv`, install dependencies, and open SABL PDF. |
+| `test.cmd` | Prepare the environment, run pytest, compile Python files, and run Ruff. |
+| `build.cmd` | Run all checks, package the app with PyInstaller, and create the Windows installer. |
 
-Windows build (Inno Setup 6 required):
+`build.cmd` requires Inno Setup 6. The installer output is in `dist/installer`.
 
-```powershell
-./scripts/build.ps1
-```
+To run the same tasks from PowerShell, use `./scripts/run.ps1`, `./scripts/test.ps1`, or `./scripts/build.ps1`. A double-click on a `.ps1` file normally opens an editor on Windows, so the `.cmd` launchers invoke the scripts with a process-scoped execution policy. No permanent PowerShell policy change is made. Tests use Qt offscreen mode without affecting the normal app launcher.
 
 For OCR in a source checkout, install Tesseract `eng.traineddata` or provide a valid `TESSDATA_PREFIX`. Release installers include English OCR data.
 
