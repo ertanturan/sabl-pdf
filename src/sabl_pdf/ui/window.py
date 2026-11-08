@@ -1,12 +1,14 @@
 from collections.abc import Callable
+from pathlib import Path
 
 from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QToolBar, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget
 
 from sabl_pdf.core.session import DocumentSession
 from sabl_pdf.services.viewer import SearchMatch, ViewerService
 from sabl_pdf.ui.canvas import PdfCanvas
+from sabl_pdf.ui.document_tab import DocumentTab
 from sabl_pdf.ui.search_bar import SearchBar
 from sabl_pdf.ui.welcome_page import WelcomePage
 from sabl_pdf.ui.page_thumbnails import PageThumbnails
@@ -35,7 +37,10 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     ) -> None:
         super().__init__()
         self._ui_settings = settings or QSettings("SABL", "SABL PDF")
-        self.session = session or DocumentSession()
+        self._initial_session = session
+        self._active_tab: DocumentTab | None = None
+        self._empty_session = session or DocumentSession()
+        self.session = self._empty_session
         self.viewer = ViewerService(self.session)
         self.text_boxes = TextBoxService(self.session)
         self.forms = FormService(self.session)
@@ -52,10 +57,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._document_actions: list[QAction] = []
         self.setWindowTitle("SABL PDF")
         self.resize(1024, 780)
-        self.canvas = PdfCanvas()
-        self.canvas.area_selected.connect(self._on_area_selected)
-        self.canvas.page_changed.connect(self._on_page_changed)
-        self.canvas.selection_cancelled.connect(self._on_selection_cancelled)
+        self._empty_canvas = PdfCanvas()
+        self.canvas = self._empty_canvas
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -64,7 +67,15 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.workspace = QStackedWidget(self)
         self.welcome = WelcomePage(self)
         self.workspace.addWidget(self.welcome)
-        self.workspace.addWidget(self.canvas)
+        self.document_tabs = QTabWidget(self)
+        self.document_tabs.setObjectName("document_tabs")
+        self.document_tabs.setTabsClosable(True)
+        self.document_tabs.setMovable(True)
+        self.document_tabs.setDocumentMode(True)
+        self.document_tabs.tabBar().setExpanding(False)
+        self.document_tabs.currentChanged.connect(self._activate_document)
+        self.document_tabs.tabCloseRequested.connect(self._close_document_tab)
+        self.workspace.addWidget(self.document_tabs)
         layout.addWidget(self.workspace)
         self.setCentralWidget(central)
         self.welcome.open_requested.connect(self.open_pdf)
@@ -99,6 +110,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     def _build_menu(self) -> None:
         file_menu = self.menuBar().addMenu("File")
         self._action(file_menu, "Open PDF", self.open_pdf, "Ctrl+O")
+        self._action(file_menu, "Close tab", self._close_current_tab, "Ctrl+W")
         self._action(file_menu, "Save", self.save_pdf, "Ctrl+S")
         self._action(file_menu, "Save as", self.save_as)
         self._action(file_menu, "Copy page text", self.copy_page_text, "Ctrl+C")
@@ -131,6 +143,158 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(tools, "OCR current page", self.ocr_page)
         self._action(tools, "Export OCR text", self.export_ocr)
 
+
+    def _connect_tab(self, tab: DocumentTab) -> None:
+        tab.canvas.area_selected.connect(
+            lambda page, bounds: self._from_tab(tab, self._on_area_selected, page, bounds)
+        )
+        tab.canvas.page_changed.connect(
+            lambda page: self._from_tab(tab, self._on_page_changed, page)
+        )
+        tab.canvas.selection_cancelled.connect(
+            lambda: self._from_tab(tab, self._on_selection_cancelled)
+        )
+
+    def _from_tab(self, tab: DocumentTab, handler: Callable, *args) -> None:
+        if self._active_tab is tab:
+            handler(*args)
+
+    def _remember_active_document(self) -> None:
+        tab = self._active_tab
+        if tab is None:
+            return
+        tab.page_index = self.page_index
+        tab.zoom = self.zoom
+        tab.selection_action = self._selection_action
+        tab.active_tool = self._active_tool
+        tab.search_query = self.search_bar.query()
+        tab.search_open = not self.search_bar.isHidden()
+        tab.search_matches = self._search_matches
+        tab.search_index = self._search_index
+
+    def _activate_document(self, index: int) -> None:
+        self._remember_active_document()
+        tab = self.document_tabs.widget(index) if index >= 0 else None
+        self._active_tab = tab if isinstance(tab, DocumentTab) else None
+        if self._active_tab is None:
+            self._show_welcome()
+            return
+        self._restore_document(self._active_tab)
+
+    def _restore_document(self, tab: DocumentTab) -> None:
+        for name in (
+            "session", "viewer", "text_boxes", "forms", "signatures", "pages",
+            "annotations", "compression", "conversion", "ocr", "canvas",
+        ):
+            setattr(self, name, getattr(tab, name))
+        self.page_index = tab.page_index
+        self.zoom = tab.zoom
+        self._selection_action = tab.selection_action
+        self._search_matches = tab.search_matches
+        self._search_index = tab.search_index
+        self.search_bar.set_query(tab.search_query)
+        self.search_bar.set_position(tab.search_index, len(tab.search_matches))
+        self.search_bar.setVisible(tab.search_open)
+        self._set_active_tool(tab.active_tool)
+        self._set_document_actions_enabled(True)
+        self.thumbnails.set_document(tab.viewer, tab.viewer.page_count(), tab.page_index)
+        self.workspace.setCurrentWidget(self.document_tabs)
+        self._update_page_status()
+        self._update_tab_title()
+
+    def _show_welcome(self) -> None:
+        self.session = self._empty_session
+        self.canvas = self._empty_canvas
+        self.page_index = 0
+        self.zoom = 1.0
+        self._selection_action = None
+        self._search_matches = []
+        self._search_index = -1
+        self.search_bar.dismiss()
+        self.search_bar.set_query("")
+        self._set_active_tool(None)
+        self._set_document_actions_enabled(False)
+        self.thumbnails.hide()
+        self._first_thumbnails = True
+        self.workspace.setCurrentWidget(self.welcome)
+        self.status.setText("Open a PDF to begin")
+        self.setWindowTitle("SABL PDF")
+
+    def _update_tab_title(self) -> None:
+        tab = self._active_tab
+        if tab is None:
+            return
+        index = self.document_tabs.indexOf(tab)
+        if index >= 0:
+            self.document_tabs.setTabText(index, tab.title())
+        self.setWindowTitle(f"SABL PDF | {tab.title()}")
+
+    def _open_document(self, path: str | Path) -> None:
+        requested = Path(path)
+        for index in range(self.document_tabs.count()):
+            tab = self.document_tabs.widget(index)
+            if tab.session.path and tab.session.path.resolve() == requested.resolve():
+                self.document_tabs.setCurrentIndex(index)
+                return
+        session = (
+            self._initial_session
+            if not self.document_tabs.count() and self._initial_session is not None
+            else DocumentSession()
+        )
+        session.open(requested)
+        tab = DocumentTab(session, self.document_tabs)
+        self._connect_tab(tab)
+        self.document_tabs.addTab(tab, tab.title())
+        self.document_tabs.setCurrentWidget(tab)
+        self._refresh()
+        if session.open_warnings:
+            QMessageBox.warning(
+                self, "PDF warnings",
+                "This PDF contains damaged or missing objects. Some content may be "
+                "unavailable. Review the pages and use Save as to keep the original.",
+            )
+
+    def _close_current_tab(self) -> None:
+        index = self.document_tabs.currentIndex()
+        if index >= 0:
+            self._close_document_tab(index)
+
+    def _close_document_tab(self, index: int) -> None:
+        tab = self.document_tabs.widget(index)
+        if not isinstance(tab, DocumentTab) or not self._confirm_tab_changes(tab):
+            return
+        if tab is self._active_tab:
+            self._active_tab = None
+        self.document_tabs.removeTab(index)
+        tab.session.close()
+        tab.deleteLater()
+        if not self.document_tabs.count():
+            self._show_welcome()
+
+    def _confirm_tab_changes(self, tab: DocumentTab) -> bool:
+        if not tab.session.dirty:
+            return True
+        choice = QMessageBox.question(
+            self, "Unsaved changes",
+            f"Save changes to {tab.title()} before closing?",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+        )
+        if choice == QMessageBox.StandardButton.Cancel:
+            return False
+        if choice == QMessageBox.StandardButton.Discard:
+            return True
+        if choice != QMessageBox.StandardButton.Save:
+            return False
+        self.document_tabs.setCurrentWidget(tab)
+        if tab.session.path is None:
+            self.save_as()
+        else:
+            self._run(lambda: tab.session.save())
+        if not tab.session.dirty:
+            self._update_tab_title()
+        return not tab.session.dirty
 
     def _build_thumbnails(self) -> None:
         self.thumbnails = PageThumbnails(self)
@@ -297,11 +461,12 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
     def _refresh(self) -> None:
         document = self.session.document
-        self.workspace.setCurrentWidget(self.canvas)
+        self.workspace.setCurrentWidget(self.document_tabs)
         self._set_document_actions_enabled(True)
         if len(document) == 0:
             self.status.setText("No pages")
             self.canvas.display_pages([], self.viewer.render, self.zoom)
+            self._update_tab_title()
             return
         requested_page = min(max(0, self.page_index), len(document) - 1)
         self.canvas.display_pages(
@@ -316,7 +481,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self._first_thumbnails = False
         self.canvas.scroll_to_page(requested_page)
         self._update_page_status()
-        self.setWindowTitle(f"SABL PDF | {self.session.path.name if self.session.path else 'Unsaved'}")
+        self._update_tab_title()
 
     def _update_page_status(self) -> None:
         self.status.setText(
@@ -337,20 +502,19 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
 
     def _confirm_changes(self) -> bool:
-        if not self.session.dirty:
-            return True
-        decision = QMessageBox.question(
-            self, "Unsaved changes", "Discard unsaved changes?",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        return all(
+            self._confirm_tab_changes(self.document_tabs.widget(index))
+            for index in range(self.document_tabs.count())
         )
-        return decision == QMessageBox.StandardButton.Yes
 
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if not self._confirm_changes():
             event.ignore()
             return
-        self.session.close()
+        for index in range(self.document_tabs.count()):
+            self.document_tabs.widget(index).session.close()
+        self._empty_session.close()
         event.accept()
 
 

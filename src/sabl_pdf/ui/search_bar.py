@@ -1,4 +1,4 @@
-from PySide6.QtCore import QTimer, Signal
+from PySide6.QtCore import QSignalBlocker, QTimer, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QLineEdit, QToolButton, QWidget
 
 
@@ -57,6 +57,11 @@ class SearchBar(QWidget):
 
     def set_position(self, index: int, count: int) -> None:
         self.results.setText(f"{index + 1} of {count}" if count else "No matches")
+
+    def set_query(self, query: str) -> None:
+        self._timer.stop()
+        with QSignalBlocker(self.search_input):
+            self.search_input.setText(query)
 
     def query(self) -> str:
         return self.search_input.text()
