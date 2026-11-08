@@ -1,6 +1,4 @@
 import json
-from pathlib import Path
-
 from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QFileDialog, QDialog, QMessageBox
 
