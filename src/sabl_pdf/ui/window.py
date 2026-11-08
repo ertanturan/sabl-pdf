@@ -11,6 +11,7 @@ from sabl_pdf.ui.search_bar import SearchBar
 from sabl_pdf.ui.welcome_page import WelcomePage
 from sabl_pdf.ui.page_thumbnails import PageThumbnails
 from sabl_pdf.ui.viewer_actions import ViewerActions
+from sabl_pdf.services.placed_items import PlacedItemService
 from sabl_pdf.services.text_boxes import TextBoxService
 from sabl_pdf.ui.text_actions import TextActions
 from sabl_pdf.services.forms import FormService
@@ -38,6 +39,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.session = session or DocumentSession()
         self.viewer = ViewerService(self.session)
         self.text_boxes = TextBoxService(self.session)
+        self.placed_items = PlacedItemService(self.session)
         self.forms = FormService(self.session)
         self.signatures = SignatureService(self.session)
         self.pages = PageService(self.session)
@@ -56,6 +58,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.canvas.area_selected.connect(self._on_area_selected)
         self.canvas.page_changed.connect(self._on_page_changed)
         self.canvas.selection_cancelled.connect(self._on_selection_cancelled)
+        self.canvas.item_move_requested.connect(self._on_item_moved)
+        self.canvas.item_delete_requested.connect(self._on_item_deleted)
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -107,6 +111,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(edit, "Add text box", self.add_text_box)
         self._action(edit, "Edit text box", self.edit_text_box)
         self._action(edit, "Remove text box", self.remove_text_box)
+        self._action(edit, "Delete selected item", self.canvas.delete_selected_item, "Delete")
         self._action(edit, "Fill form field", self.fill_form)
         signatures = self.menuBar().addMenu("Signatures")
         self._action(signatures, "Import signature image", self.import_signature)
@@ -277,6 +282,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self.canvas.cancel_selection()
         elif self.search_bar.isVisible():
             self._close_search()
+        else:
+            self.canvas.clear_item_selection()
 
 
     def _require_document(self) -> bool:
@@ -309,6 +316,9 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             lambda index: self.viewer.render(index, self.zoom),
             self.zoom,
         )
+        self.canvas.set_placed_items([
+            (item.page, item.xref, item.bounds) for item in self.placed_items.list()
+        ])
         self.page_index = requested_page
         self.thumbnails.set_document(self.viewer, len(document), requested_page)
         if self._first_thumbnails:
@@ -364,6 +374,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         if not self._require_document():
             return
         self._selection_action = callback
+        self.canvas.clear_item_selection()
         self._set_active_tool(tool_name)
         self.canvas.set_selection_enabled(True, click_size, preview_strokes)
         self.status.setText(
@@ -384,3 +395,17 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._set_active_tool(None)
         if action is not None:
             self._run(lambda: action(rect))
+
+    def _on_item_moved(self, page: int, xref: int, bounds: tuple) -> None:
+        def move() -> None:
+            self.placed_items.move(page, xref, bounds)
+            self.page_index = page
+            self._after_edit()
+        self._run(move)
+
+    def _on_item_deleted(self, page: int, xref: int) -> None:
+        def delete() -> None:
+            self.placed_items.delete(page, xref)
+            self.page_index = page
+            self._after_edit()
+        self._run(delete)
