@@ -10,9 +10,11 @@ from sabl_pdf.ui.viewer_actions import ViewerActions
 from sabl_pdf.services.text_boxes import TextBoxService
 from sabl_pdf.ui.text_actions import TextActions
 from sabl_pdf.services.forms import FormService
+from sabl_pdf.services.signatures import SignatureService
+from sabl_pdf.ui.signature_actions import SignatureActions
 
 
-class MainWindow(ViewerActions, TextActions, QMainWindow):
+class MainWindow(ViewerActions, TextActions, SignatureActions, QMainWindow):
 
     def __init__(self, session: DocumentSession | None = None) -> None:
         super().__init__()
@@ -20,6 +22,7 @@ class MainWindow(ViewerActions, TextActions, QMainWindow):
         self.viewer = ViewerService(self.session)
         self.text_boxes = TextBoxService(self.session)
         self.forms = FormService(self.session)
+        self.signatures = SignatureService(self.session)
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
@@ -59,6 +62,9 @@ class MainWindow(ViewerActions, TextActions, QMainWindow):
         self._action(edit, "Edit text box", self.edit_text_box)
         self._action(edit, "Remove text box", self.remove_text_box)
         self._action(edit, "Fill form field", self.fill_form)
+        signatures = self.menuBar().addMenu("Signatures")
+        self._action(signatures, "Import signature image", self.import_signature)
+        self._action(signatures, "Draw signature", self.draw_signature)
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Navigation", self)
