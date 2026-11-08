@@ -145,6 +145,7 @@ def test_damaged_pdf_shows_single_warning(tmp_path, monkeypatch) -> None:
 
     window.open_path(path)
 
+    assert application is not None
     assert window.viewer.page_count() == 1
     assert len(messages) == 1
     assert "damaged or missing" in messages[0]
