@@ -7,14 +7,19 @@ from sabl_pdf.core.session import DocumentSession
 from sabl_pdf.services.viewer import ViewerService
 from sabl_pdf.ui.canvas import PdfCanvas
 from sabl_pdf.ui.viewer_actions import ViewerActions
+from sabl_pdf.services.text_boxes import TextBoxService
+from sabl_pdf.ui.text_actions import TextActions
+from sabl_pdf.services.forms import FormService
 
 
-class MainWindow(ViewerActions, QMainWindow):
+class MainWindow(ViewerActions, TextActions, QMainWindow):
 
     def __init__(self, session: DocumentSession | None = None) -> None:
         super().__init__()
         self.session = session or DocumentSession()
         self.viewer = ViewerService(self.session)
+        self.text_boxes = TextBoxService(self.session)
+        self.forms = FormService(self.session)
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
@@ -49,6 +54,11 @@ class MainWindow(ViewerActions, QMainWindow):
         self._action(file_menu, "Save as", self.save_as)
         self._action(file_menu, "Copy page text", self.copy_page_text, "Ctrl+C")
         self._action(file_menu, "Copy selected text", self.copy_selection)
+        edit = self.menuBar().addMenu("Text & Forms")
+        self._action(edit, "Add text box", self.add_text_box)
+        self._action(edit, "Edit text box", self.edit_text_box)
+        self._action(edit, "Remove text box", self.remove_text_box)
+        self._action(edit, "Fill form field", self.fill_form)
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Navigation", self)
