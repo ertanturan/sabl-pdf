@@ -2,12 +2,13 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStyle, QToolBar, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QToolBar, QVBoxLayout, QWidget
 
 from sabl_pdf.core.session import DocumentSession
 from sabl_pdf.services.viewer import SearchMatch, ViewerService
 from sabl_pdf.ui.canvas import PdfCanvas
 from sabl_pdf.ui.search_bar import SearchBar
+from sabl_pdf.ui.welcome_page import WelcomePage
 from sabl_pdf.ui.viewer_actions import ViewerActions
 from sabl_pdf.services.text_boxes import TextBoxService
 from sabl_pdf.ui.text_actions import TextActions
@@ -54,8 +55,14 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         layout.setContentsMargins(4, 4, 4, 4)
         self.search_bar = SearchBar(self)
         layout.addWidget(self.search_bar)
-        layout.addWidget(self.canvas)
+        self.workspace = QStackedWidget(self)
+        self.welcome = WelcomePage(self)
+        self.workspace.addWidget(self.welcome)
+        self.workspace.addWidget(self.canvas)
+        layout.addWidget(self.workspace)
         self.setCentralWidget(central)
+        self.welcome.open_requested.connect(self.open_pdf)
+        self.welcome.file_dropped.connect(self.open_path)
         self._search_matches: list[SearchMatch] = []
         self._search_index = -1
         self.search_bar.search_requested.connect(self._search_query)
@@ -187,6 +194,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
     def _refresh(self) -> None:
         document = self.session.document
+        self.workspace.setCurrentWidget(self.canvas)
         if len(document) == 0:
             self.status.setText("No pages")
             self.canvas.display_pages([], self.viewer.render, self.zoom)
