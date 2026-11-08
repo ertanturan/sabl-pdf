@@ -83,3 +83,46 @@ def test_click_places_text_box_on_scrolled_page(tmp_path, monkeypatch) -> None:
     assert window.text_boxes.list(1)[0].content == "Test box"
     monkeypatch.setattr(window, "_confirm_changes", lambda: True)
     window.close()
+
+def test_signature_click_place_cancel_and_reuse(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtCore import QSettings, Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.signature_actions import SignatureActions
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "signature.pdf"
+    with fitz.open() as document:
+        document.new_page(width=400, height=500)
+        document.save(path)
+    settings = QSettings(str(tmp_path / "signature.ini"), QSettings.Format.IniFormat)
+    monkeypatch.setattr(SignatureActions, "_signature_settings", lambda self: settings)
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(path)
+    application.processEvents()
+    strokes = [[(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)]]
+
+    window._save_signature(strokes)
+    window.use_saved_signature()
+    assert window.canvas._preview_item is not None
+    QTest.mouseClick(
+        window.canvas.viewport(),
+        Qt.MouseButton.RightButton,
+        pos=window.canvas.mapFromScene(100, 100),
+    )
+    assert window.canvas._preview_item is None
+    assert len(window.session.document[0].get_drawings()) == 0
+
+    window.use_saved_signature()
+    page = window.canvas._page_rects[0]
+    click = window.canvas.mapFromScene(page.left() + 40, page.top() + 90)
+    QTest.mouseClick(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=click)
+    assert len(window.session.document[0].get_drawings()) > 0
+    assert window._load_saved_signature() == strokes
+    monkeypatch.setattr(window, "_confirm_changes", lambda: True)
+    window.close()

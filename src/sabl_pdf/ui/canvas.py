@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
-from PySide6.QtCore import QRectF, Signal
-from PySide6.QtGui import QBrush, QColor, QImage, QPen, QPixmap
+from PySide6.QtCore import Qt, QRectF, Signal
+from PySide6.QtGui import QBrush, QColor, QImage, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
 
 
@@ -23,6 +23,7 @@ class PdfCanvas(QGraphicsView):
         self._origin = None
         self._origin_page: int | None = None
         self._rubber_band = None
+        self._preview_item = None
         self.setBackgroundBrush(QBrush(QColor("#eaeaea")))
         self.verticalScrollBar().valueChanged.connect(self._viewport_changed)
         self.horizontalScrollBar().valueChanged.connect(self._viewport_changed)
@@ -33,6 +34,7 @@ class PdfCanvas(QGraphicsView):
         self._zoom = zoom
         self._render_page = render_page
         self._scene.clear()
+        self._preview_item = None
         self._page_items.clear()
         self._page_rects = self._layout_pages(sizes)
         width = max((rect.right() for rect in self._page_rects), default=0)
@@ -96,12 +98,47 @@ class PdfCanvas(QGraphicsView):
         self._viewport_changed()
 
     def set_selection_enabled(
-        self, enabled: bool, click_size: tuple[float, float] | None = None
+        self,
+        enabled: bool,
+        click_size: tuple[float, float] | None = None,
+        preview_strokes: list[list[tuple[float, float]]] | None = None,
     ) -> None:
+        self._remove_preview()
         self._selection_enabled = enabled
         self._click_size = click_size if enabled else None
         self._origin = None
         self._origin_page = None
+        self.setCursor(Qt.CursorShape.CrossCursor if enabled else Qt.CursorShape.ArrowCursor)
+        if enabled and click_size and preview_strokes:
+            self._add_signature_preview(click_size, preview_strokes)
+
+    def _remove_preview(self) -> None:
+        if self._preview_item is not None:
+            self._scene.removeItem(self._preview_item)
+            self._preview_item = None
+
+    def _add_signature_preview(
+        self, size: tuple[float, float], strokes: list[list[tuple[float, float]]]
+    ) -> None:
+        path = QPainterPath()
+        width, height = size
+        for stroke in strokes:
+            if not stroke:
+                continue
+            path.moveTo(stroke[0][0] * width * self._zoom, stroke[0][1] * height * self._zoom)
+            for x, y in stroke[1:]:
+                path.lineTo(x * width * self._zoom, y * height * self._zoom)
+        self._preview_item = self._scene.addPath(path, QPen(QColor("#2775cc"), 2))
+        self._preview_item.setZValue(10)
+        self._preview_item.hide()
+
+    def _move_preview(self, position) -> None:
+        if self._preview_item is None:
+            return
+        page = self._page_at(position)
+        self._preview_item.setVisible(page is not None)
+        if page is not None:
+            self._preview_item.setPos(position)
 
     def highlight(self, bounds: tuple[float, float, float, float], page: int) -> None:
         x0, y0, x1, y1 = bounds
@@ -119,11 +156,11 @@ class PdfCanvas(QGraphicsView):
         return None
 
     def mousePressEvent(self, event) -> None:
-        if self._selection_enabled and event.button().name == "RightButton":
+        if self._selection_enabled and event.button() == Qt.MouseButton.RightButton:
             self._cancel_selection()
             event.accept()
             return
-        if self._selection_enabled and event.button().name == "LeftButton":
+        if self._selection_enabled and event.button() == Qt.MouseButton.LeftButton:
             position = self.mapToScene(event.position().toPoint())
             page = self._page_at(position)
             if page is not None:
@@ -137,6 +174,8 @@ class PdfCanvas(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
+        if self._selection_enabled:
+            self._move_preview(self.mapToScene(event.position().toPoint()))
         if self._selection_enabled and self._origin is not None:
             position = self.mapToScene(event.position().toPoint())
             self._rubber_band.setRect(QRectF(self._origin, position).normalized())

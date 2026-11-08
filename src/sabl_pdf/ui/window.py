@@ -82,6 +82,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         signatures = self.menuBar().addMenu("Signatures")
         self._action(signatures, "Import signature image", self.import_signature)
         self._action(signatures, "Draw signature", self.draw_signature)
+        self._action(signatures, "Use saved signature", self.use_saved_signature)
         pages = self.menuBar().addMenu("Pages")
         self._action(pages, "Merge PDF", self.merge_pdf)
         self._action(pages, "Split page range", self.split_pdf)
@@ -185,12 +186,15 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
 
     def _select_area(
-        self, callback: Callable[[tuple], None], click_size: tuple[float, float] | None = None
+        self,
+        callback: Callable[[tuple], None],
+        click_size: tuple[float, float] | None = None,
+        preview_strokes: list[list[tuple[float, float]]] | None = None,
     ) -> None:
         if not self._require_document():
             return
         self._selection_action = callback
-        self.canvas.set_selection_enabled(True, click_size)
+        self.canvas.set_selection_enabled(True, click_size, preview_strokes)
         self.status.setText(
             "Click to place or drag to size; right-click to cancel"
             if click_size else "Drag a rectangle on the page; right-click to cancel"
