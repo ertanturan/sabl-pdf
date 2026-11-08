@@ -12,9 +12,11 @@ from sabl_pdf.ui.text_actions import TextActions
 from sabl_pdf.services.forms import FormService
 from sabl_pdf.services.signatures import SignatureService
 from sabl_pdf.ui.signature_actions import SignatureActions
+from sabl_pdf.services.pages import PageService
+from sabl_pdf.ui.page_actions import PageActions
 
 
-class MainWindow(ViewerActions, TextActions, SignatureActions, QMainWindow):
+class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, QMainWindow):
 
     def __init__(self, session: DocumentSession | None = None) -> None:
         super().__init__()
@@ -23,6 +25,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, QMainWindow):
         self.text_boxes = TextBoxService(self.session)
         self.forms = FormService(self.session)
         self.signatures = SignatureService(self.session)
+        self.pages = PageService(self.session)
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
@@ -65,6 +68,13 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, QMainWindow):
         signatures = self.menuBar().addMenu("Signatures")
         self._action(signatures, "Import signature image", self.import_signature)
         self._action(signatures, "Draw signature", self.draw_signature)
+        pages = self.menuBar().addMenu("Pages")
+        self._action(pages, "Merge PDF", self.merge_pdf)
+        self._action(pages, "Split page range", self.split_pdf)
+        self._action(pages, "Delete page", self.delete_page)
+        self._action(pages, "Rotate page", self.rotate_page)
+        self._action(pages, "Move page earlier", lambda: self.move_page(-1))
+        self._action(pages, "Move page later", lambda: self.move_page(1))
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Navigation", self)
