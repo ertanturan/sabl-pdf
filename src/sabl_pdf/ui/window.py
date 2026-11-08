@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QToolBar, QVBoxLayout, QWidget
 
@@ -30,8 +30,11 @@ from sabl_pdf.ui.ocr_actions import OcrActions
 
 class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, OcrActions, QMainWindow):
 
-    def __init__(self, session: DocumentSession | None = None) -> None:
+    def __init__(
+        self, session: DocumentSession | None = None, settings: QSettings | None = None
+    ) -> None:
         super().__init__()
+        self._ui_settings = settings or QSettings("SABL", "SABL PDF")
         self.session = session or DocumentSession()
         self.viewer = ViewerService(self.session)
         self.text_boxes = TextBoxService(self.session)
@@ -77,6 +80,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._build_menu()
         self._build_toolbar()
         self._build_thumbnails()
+        self._build_toolbar_preferences()
         self._build_cancel_shortcut()
         self._set_document_actions_enabled(False)
 
@@ -131,8 +135,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     def _build_thumbnails(self) -> None:
         self.thumbnails = PageThumbnails(self)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.thumbnails)
-        view_menu = self.menuBar().addMenu("View")
-        view_menu.addAction(self.thumbnails.toggleViewAction())
+        self.view_menu = self.menuBar().addMenu("View")
+        self.view_menu.addAction(self.thumbnails.toggleViewAction())
         self.thumbnails.page_selected.connect(self._jump_to_page)
         self.thumbnails.hide()
         self._first_thumbnails = True
@@ -144,6 +148,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Quick access", self)
+        self._quick_toolbar = toolbar
         toolbar.setObjectName("quick_access")
         toolbar.setMovable(False)
         toolbar.setIconSize(QSize(20, 20))
@@ -156,16 +161,23 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             toolbar, "find", "Find", self.search_text, "SP_FileDialogContentsView", "Ctrl+F"
         )
         toolbar.addSeparator()
-        self._toolbar_button(toolbar, "text", "Add Text", self.add_text_box, "SP_FileIcon")
+        self._toolbar_button(
+            toolbar, "text", "Add Text", self.add_text_box, "SP_FileIcon", "Ctrl+Shift+T"
+        )
         self._toolbar_button(
             toolbar, "highlight", "Highlight",
-            lambda: self.mark_selection("highlight"), "SP_DialogApplyButton",
+            lambda: self.mark_selection("highlight"), "SP_DialogApplyButton", "Ctrl+Shift+H",
         )
-        self._toolbar_button(toolbar, "sign", "Sign", self.draw_signature, "SP_FileDialogInfoView")
-        toolbar.addSeparator()
-        self._toolbar_button(toolbar, "rotate", "Rotate", self.rotate_page, "SP_BrowserReload")
         self._toolbar_button(
-            toolbar, "compress", "Compress", self.compress_pdf, "SP_DriveHDIcon"
+            toolbar, "sign", "Sign", self.draw_signature, "SP_FileDialogInfoView", "Ctrl+Alt+S"
+        )
+        toolbar.addSeparator()
+        self._toolbar_button(
+            toolbar, "rotate", "Rotate", self.rotate_page, "SP_BrowserReload", "Ctrl+Shift+R"
+        )
+        self._toolbar_button(
+            toolbar, "compress", "Compress", self.compress_pdf, "SP_DriveHDIcon",
+            "Ctrl+Shift+C"
         )
         self._build_navigation_toolbar()
 
@@ -178,11 +190,46 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         action.setToolTip(text + (f" ({shortcut})" if shortcut else ""))
         if shortcut:
             action.setShortcut(QKeySequence(shortcut))
+            self.addAction(action)
         if key in {"text", "highlight", "sign"}:
             action.setCheckable(True)
         action.triggered.connect(lambda _checked=False: self._invoke_quick_action(key, handler))
         toolbar.addAction(action)
         self.quick_actions[key] = action
+
+    def _build_toolbar_preferences(self) -> None:
+        menu = self.view_menu.addMenu("Customize toolbar")
+        self.toolbar_toggles: dict[str, QAction] = {}
+        for key, action in self.quick_actions.items():
+            toggle = menu.addAction(action.text())
+            toggle.setCheckable(True)
+            toggle.setChecked(
+                self._ui_settings.value(f"toolbar/{key}", True, type=bool)
+            )
+            toggle.toggled.connect(
+                lambda checked, action_key=key: self._set_toolbar_visible(action_key, checked)
+            )
+            self.toolbar_toggles[key] = toggle
+        menu.addSeparator()
+        menu.addAction("Reset toolbar", self._reset_toolbar)
+        self._refresh_toolbar()
+
+    def _set_toolbar_visible(self, key: str, visible: bool) -> None:
+        self._ui_settings.setValue(f"toolbar/{key}", visible)
+        self._refresh_toolbar()
+
+    def _reset_toolbar(self) -> None:
+        for action in self.toolbar_toggles.values():
+            action.setChecked(True)
+
+    def _refresh_toolbar(self) -> None:
+        self._quick_toolbar.clear()
+        for group in (("open", "save", "find"), ("text", "highlight", "sign"), ("rotate", "compress")):
+            available = [self.quick_actions[key] for key in group if self.toolbar_toggles[key].isChecked()]
+            if available:
+                if self._quick_toolbar.actions():
+                    self._quick_toolbar.addSeparator()
+                self._quick_toolbar.addActions(available)
 
     def _invoke_quick_action(self, key: str, handler: Callable) -> None:
         handler()
