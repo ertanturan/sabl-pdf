@@ -6,28 +6,12 @@ from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
 class ViewerActions:
 
     def open_pdf(self) -> None:
-        if not self._confirm_changes():
-            return
         filename, _ = QFileDialog.getOpenFileName(self, "Open PDF", "", "PDF (*.pdf)")
         if filename:
             self.open_path(filename)
 
     def open_path(self, path: str | Path) -> None:
-        def action() -> None:
-            self.session.open(path)
-            self.page_index = 0
-            self._search_matches = []
-            self._search_index = -1
-            self._refresh()
-            if self.search_bar.query():
-                self._search_query(self.search_bar.query())
-            if self.session.open_warnings:
-                QMessageBox.warning(
-                    self, "PDF warnings",
-                    "This PDF contains damaged or missing objects. Some content may be "
-                    "unavailable. Review the pages and use Save as to keep the original.",
-                )
-        self._run(action)
+        self._run(lambda: self._open_document(path))
 
     def save_pdf(self) -> None:
         if not self._require_document():
