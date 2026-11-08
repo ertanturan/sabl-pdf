@@ -1,7 +1,8 @@
 from collections.abc import Callable
 
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QToolBar, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStyle, QToolBar, QVBoxLayout, QWidget
 
 from sabl_pdf.core.session import DocumentSession
 from sabl_pdf.services.viewer import ViewerService
@@ -104,20 +105,59 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
 
     def _build_toolbar(self) -> None:
-        toolbar = QToolBar("Navigation", self)
+        toolbar = QToolBar("Quick access", self)
+        toolbar.setObjectName("quick_access")
         toolbar.setMovable(False)
+        toolbar.setIconSize(QSize(20, 20))
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.addToolBar(toolbar)
+        self.quick_actions: dict[str, QAction] = {}
+        self._toolbar_button(toolbar, "open", "Open", self.open_pdf, "SP_DialogOpenButton")
+        self._toolbar_button(toolbar, "save", "Save", self.save_pdf, "SP_DialogSaveButton")
+        self._toolbar_button(
+            toolbar, "find", "Find", self.search_text, "SP_FileDialogContentsView", "Ctrl+F"
+        )
+        toolbar.addSeparator()
+        self._toolbar_button(toolbar, "text", "Add Text", self.add_text_box, "SP_FileIcon")
+        self._toolbar_button(
+            toolbar, "highlight", "Highlight",
+            lambda: self.mark_selection("highlight"), "SP_DialogApplyButton",
+        )
+        self._toolbar_button(toolbar, "sign", "Sign", self.draw_signature, "SP_FileDialogInfoView")
+        toolbar.addSeparator()
+        self._toolbar_button(toolbar, "rotate", "Rotate", self.rotate_page, "SP_BrowserReload")
+        self._toolbar_button(
+            toolbar, "compress", "Compress", self.compress_pdf, "SP_DriveHDIcon"
+        )
+        self._build_navigation_toolbar()
+
+    def _toolbar_button(
+        self, toolbar: QToolBar, key: str, text: str, handler: Callable,
+        icon: str, shortcut: str | None = None,
+    ) -> None:
+        action = QAction(self.style().standardIcon(getattr(QStyle.StandardPixmap, icon)), text, self)
+        action.setObjectName(f"quick_{key}")
+        action.setToolTip(text + (f" ({shortcut})" if shortcut else ""))
+        if shortcut:
+            action.setShortcut(QKeySequence(shortcut))
+        action.triggered.connect(handler)
+        toolbar.addAction(action)
+        self.quick_actions[key] = action
+
+    def _build_navigation_toolbar(self) -> None:
+        navigation = QToolBar("Page navigation", self)
+        navigation.setObjectName("page_navigation")
+        navigation.setMovable(False)
+        self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, navigation)
         for text, handler in [
-            ("Open", self.open_pdf), ("Save", self.save_pdf),
             ("Previous", lambda: self.change_page(-1)),
             ("Next", lambda: self.change_page(1)),
-            ("Zoom -", lambda: self.change_zoom(0.8)),
-            ("Zoom +", lambda: self.change_zoom(1.25)),
-            ("Search", self.search_text),
+            ("Zoom Out", lambda: self.change_zoom(0.8)),
+            ("Zoom In", lambda: self.change_zoom(1.25)),
         ]:
             action = QAction(text, self)
             action.triggered.connect(handler)
-            toolbar.addAction(action)
+            navigation.addAction(action)
 
 
     def _require_document(self) -> bool:
