@@ -9,6 +9,7 @@ from sabl_pdf.services.viewer import SearchMatch, ViewerService
 from sabl_pdf.ui.canvas import PdfCanvas
 from sabl_pdf.ui.search_bar import SearchBar
 from sabl_pdf.ui.welcome_page import WelcomePage
+from sabl_pdf.ui.page_thumbnails import PageThumbnails
 from sabl_pdf.ui.viewer_actions import ViewerActions
 from sabl_pdf.services.text_boxes import TextBoxService
 from sabl_pdf.ui.text_actions import TextActions
@@ -73,6 +74,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.statusBar().addPermanentWidget(self.status)
         self._build_menu()
         self._build_toolbar()
+        self._build_thumbnails()
 
 
     def _action(self, menu, text: str, handler, shortcut: str | None = None) -> QAction:
@@ -119,6 +121,20 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(tools, "OCR current page", self.ocr_page)
         self._action(tools, "Export OCR text", self.export_ocr)
 
+
+    def _build_thumbnails(self) -> None:
+        self.thumbnails = PageThumbnails(self)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.thumbnails)
+        view_menu = self.menuBar().addMenu("View")
+        view_menu.addAction(self.thumbnails.toggleViewAction())
+        self.thumbnails.page_selected.connect(self._jump_to_page)
+        self.thumbnails.hide()
+        self._first_thumbnails = True
+
+    def _jump_to_page(self, index: int) -> None:
+        if self._require_document():
+            self.page_index = index
+            self.canvas.scroll_to_page(index)
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Quick access", self)
@@ -206,6 +222,10 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self.zoom,
         )
         self.page_index = requested_page
+        self.thumbnails.set_document(self.viewer, len(document), requested_page)
+        if self._first_thumbnails:
+            self.thumbnails.show()
+            self._first_thumbnails = False
         self.canvas.scroll_to_page(requested_page)
         self._update_page_status()
         self.setWindowTitle(f"SABL PDF | {self.session.path.name if self.session.path else 'Unsaved'}")
@@ -217,6 +237,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
     def _on_page_changed(self, page_index: int) -> None:
         self.page_index = page_index
+        if hasattr(self, "thumbnails"):
+            self.thumbnails.select_page(page_index)
         self._update_page_status()
 
 
