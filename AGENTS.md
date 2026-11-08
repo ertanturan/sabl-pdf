@@ -26,11 +26,11 @@
 - One logical work package per commit. If a proposed commit message needs the word "and", split the commit into smaller commits.
 - Use small, imperative commits such as `feat: render PDF page` or `test: cover PDF zoom`.
 - Keep refactors separate from feature commits. Do not mix unrelated bug fixes.
-- Never create or reopen pull requests without explicit user approval, except when asked to restore existing pull requests.
+- Always create a pull request for every completed feature, bugfix, chore, refactor, docs, tests, build, or CI change without waiting for separate approval.
 - Never merge pull requests. The repository owner merges manually after required CI checks pass.
 
 ## Pull request descriptions
-- Create a pull request only after the repository owner explicitly approves its creation.
+- Create or update the corresponding pull request as part of every code or documentation change, without requesting separate approval.
 - Use four headings: `Change type`, `What changed`, `How to test`, and `Stack`.
 - Write short bullet points under every heading. Avoid paragraphs and broad claims.
 - Label each change as feature, bugfix, tests, docs, refactor, build, or CI. Include every applicable type.
