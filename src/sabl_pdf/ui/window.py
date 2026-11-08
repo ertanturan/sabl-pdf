@@ -45,6 +45,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
+        self._active_tool: str | None = None
+        self._document_actions: list[QAction] = []
         self.setWindowTitle("SABL PDF")
         self.resize(1024, 780)
         self.canvas = PdfCanvas()
@@ -75,6 +77,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._build_menu()
         self._build_toolbar()
         self._build_thumbnails()
+        self._build_cancel_shortcut()
+        self._set_document_actions_enabled(False)
 
 
     def _action(self, menu, text: str, handler, shortcut: str | None = None) -> QAction:
@@ -83,6 +87,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             action.setShortcut(QKeySequence(shortcut))
         action.triggered.connect(handler)
         menu.addAction(action)
+        if text != "Open PDF":
+            self._document_actions.append(action)
         return action
 
 
@@ -172,15 +178,23 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         action.setToolTip(text + (f" ({shortcut})" if shortcut else ""))
         if shortcut:
             action.setShortcut(QKeySequence(shortcut))
-        action.triggered.connect(handler)
+        if key in {"text", "highlight", "sign"}:
+            action.setCheckable(True)
+        action.triggered.connect(lambda _checked=False: self._invoke_quick_action(key, handler))
         toolbar.addAction(action)
         self.quick_actions[key] = action
+
+    def _invoke_quick_action(self, key: str, handler: Callable) -> None:
+        handler()
+        if key in {"text", "highlight", "sign"} and self._selection_action is None:
+            self._set_active_tool(None)
 
     def _build_navigation_toolbar(self) -> None:
         navigation = QToolBar("Page navigation", self)
         navigation.setObjectName("page_navigation")
         navigation.setMovable(False)
         self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, navigation)
+        self.navigation_actions: list[QAction] = []
         for text, handler in [
             ("Previous", lambda: self.change_page(-1)),
             ("Next", lambda: self.change_page(1)),
@@ -190,6 +204,32 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             action = QAction(text, self)
             action.triggered.connect(handler)
             navigation.addAction(action)
+            self.navigation_actions.append(action)
+
+    def _build_cancel_shortcut(self) -> None:
+        cancel_action = QAction(self)
+        cancel_action.setShortcut(QKeySequence("Escape"))
+        cancel_action.triggered.connect(self._cancel_active_tool)
+        self.addAction(cancel_action)
+
+    def _set_document_actions_enabled(self, enabled: bool) -> None:
+        for action in self._document_actions:
+            action.setEnabled(enabled)
+        for key, action in self.quick_actions.items():
+            action.setEnabled(enabled or key == "open")
+        for action in self.navigation_actions:
+            action.setEnabled(enabled)
+
+    def _set_active_tool(self, name: str | None) -> None:
+        self._active_tool = name
+        for key, label in {"text": "Add Text", "highlight": "Highlight", "sign": "Sign"}.items():
+            self.quick_actions[key].setChecked(name == label)
+
+    def _cancel_active_tool(self) -> None:
+        if self._selection_action is not None:
+            self.canvas.cancel_selection()
+        elif self.search_bar.isVisible():
+            self._close_search()
 
 
     def _require_document(self) -> bool:
@@ -211,6 +251,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     def _refresh(self) -> None:
         document = self.session.document
         self.workspace.setCurrentWidget(self.canvas)
+        self._set_document_actions_enabled(True)
         if len(document) == 0:
             self.status.setText("No pages")
             self.canvas.display_pages([], self.viewer.render, self.zoom)
@@ -271,10 +312,12 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         callback: Callable[[tuple], None],
         click_size: tuple[float, float] | None = None,
         preview_strokes: list[list[tuple[float, float]]] | None = None,
+        tool_name: str = "Select area",
     ) -> None:
         if not self._require_document():
             return
         self._selection_action = callback
+        self._set_active_tool(tool_name)
         self.canvas.set_selection_enabled(True, click_size, preview_strokes)
         self.status.setText(
             "Click to place or drag to size; right-click to cancel"
@@ -283,6 +326,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
     def _on_selection_cancelled(self) -> None:
         self._selection_action = None
+        self._set_active_tool(None)
         self._update_page_status()
 
 
@@ -290,5 +334,6 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.page_index = page_index
         action = self._selection_action
         self._selection_action = None
+        self._set_active_tool(None)
         if action is not None:
             self._run(lambda: action(rect))

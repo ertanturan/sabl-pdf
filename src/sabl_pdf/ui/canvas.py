@@ -197,6 +197,10 @@ class PdfCanvas(QGraphicsView):
             return
         super().mouseMoveEvent(event)
 
+    def cancel_selection(self) -> None:
+        if self._selection_enabled:
+            self._cancel_selection()
+
     def _cancel_selection(self) -> None:
         if self._rubber_band is not None:
             self._scene.removeItem(self._rubber_band)

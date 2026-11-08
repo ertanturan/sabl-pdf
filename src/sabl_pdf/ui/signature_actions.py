@@ -19,6 +19,7 @@ class SignatureActions:
                     self._after_edit(),
                 ),
                 click_size=(180, 70),
+                tool_name="Sign",
             )
 
     def draw_signature(self) -> None:
@@ -51,6 +52,7 @@ class SignatureActions:
             ),
             click_size=(180, 70),
             preview_strokes=strokes,
+            tool_name="Sign",
         )
 
     def _signature_settings(self) -> QSettings:

@@ -95,4 +95,4 @@ class ViewerActions:
             def copy(bounds) -> None:
                 page = self.session.document[self.page_index]
                 QApplication.clipboard().setText(page.get_textbox(fitz.Rect(bounds)))
-            self._select_area(copy)
+            self._select_area(copy, tool_name="Copy text")
