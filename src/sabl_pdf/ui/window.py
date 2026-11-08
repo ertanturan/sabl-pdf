@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from pathlib import Path
 
 from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
@@ -228,6 +229,73 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self.document_tabs.setTabText(index, tab.title())
         self.setWindowTitle(f"SABL PDF | {tab.title()}")
 
+    def _open_document(self, path: str | Path) -> None:
+        requested = Path(path)
+        for index in range(self.document_tabs.count()):
+            tab = self.document_tabs.widget(index)
+            if tab.session.path and tab.session.path.resolve() == requested.resolve():
+                self.document_tabs.setCurrentIndex(index)
+                return
+        session = (
+            self._initial_session
+            if not self.document_tabs.count() and self._initial_session is not None
+            else DocumentSession()
+        )
+        session.open(requested)
+        tab = DocumentTab(session, self.document_tabs)
+        self._connect_tab(tab)
+        self.document_tabs.addTab(tab, tab.title())
+        self.document_tabs.setCurrentWidget(tab)
+        self._refresh()
+        if session.open_warnings:
+            QMessageBox.warning(
+                self, "PDF warnings",
+                "This PDF contains damaged or missing objects. Some content may be "
+                "unavailable. Review the pages and use Save as to keep the original.",
+            )
+
+    def _close_current_tab(self) -> None:
+        index = self.document_tabs.currentIndex()
+        if index >= 0:
+            self._close_document_tab(index)
+
+    def _close_document_tab(self, index: int) -> None:
+        tab = self.document_tabs.widget(index)
+        if not isinstance(tab, DocumentTab) or not self._confirm_tab_changes(tab):
+            return
+        if tab is self._active_tab:
+            self._active_tab = None
+        self.document_tabs.removeTab(index)
+        tab.session.close()
+        tab.deleteLater()
+        if not self.document_tabs.count():
+            self._show_welcome()
+
+    def _confirm_tab_changes(self, tab: DocumentTab) -> bool:
+        if not tab.session.dirty:
+            return True
+        choice = QMessageBox.question(
+            self, "Unsaved changes",
+            f"Save changes to {tab.title()} before closing?",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+        )
+        if choice == QMessageBox.StandardButton.Cancel:
+            return False
+        if choice == QMessageBox.StandardButton.Discard:
+            return True
+        if choice != QMessageBox.StandardButton.Save:
+            return False
+        self.document_tabs.setCurrentWidget(tab)
+        if tab.session.path is None:
+            self.save_as()
+        else:
+            self._run(lambda: tab.session.save())
+        if not tab.session.dirty:
+            self._update_tab_title()
+        return not tab.session.dirty
+
     def _build_thumbnails(self) -> None:
         self.thumbnails = PageThumbnails(self)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.thumbnails)
@@ -398,6 +466,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         if len(document) == 0:
             self.status.setText("No pages")
             self.canvas.display_pages([], self.viewer.render, self.zoom)
+            self._update_tab_title()
             return
         requested_page = min(max(0, self.page_index), len(document) - 1)
         self.canvas.display_pages(
