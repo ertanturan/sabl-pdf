@@ -150,3 +150,22 @@ def test_damaged_pdf_shows_single_warning(tmp_path, monkeypatch) -> None:
     assert len(messages) == 1
     assert "damaged or missing" in messages[0]
     window.close()
+
+
+def test_quick_access_and_navigation_toolbars() -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtGui import QKeySequence
+    from PySide6.QtWidgets import QApplication, QToolBar
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+
+    assert application is not None
+    assert set(window.quick_actions) == {
+        "open", "save", "find", "text", "highlight", "sign", "rotate", "compress"
+    }
+    assert window.quick_actions["find"].shortcut() == QKeySequence("Ctrl+F")
+    assert window.findChild(QToolBar, "quick_access") is not None
+    assert window.findChild(QToolBar, "page_navigation") is not None
+    window.close()
