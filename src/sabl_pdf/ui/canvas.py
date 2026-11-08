@@ -24,6 +24,7 @@ class PdfCanvas(QGraphicsView):
         self._origin_page: int | None = None
         self._rubber_band = None
         self._preview_item = None
+        self._search_highlight = None
         self.setBackgroundBrush(QBrush(QColor("#eaeaea")))
         self.verticalScrollBar().valueChanged.connect(self._viewport_changed)
         self.horizontalScrollBar().valueChanged.connect(self._viewport_changed)
@@ -35,6 +36,7 @@ class PdfCanvas(QGraphicsView):
         self._render_page = render_page
         self._scene.clear()
         self._preview_item = None
+        self._search_highlight = None
         self._page_items.clear()
         self._page_rects = self._layout_pages(sizes)
         width = max((rect.right() for rect in self._page_rects), default=0)
@@ -146,10 +148,16 @@ class PdfCanvas(QGraphicsView):
         if page is not None:
             self._preview_item.setPos(position)
 
+    def clear_search_highlight(self) -> None:
+        if self._search_highlight is not None:
+            self._scene.removeItem(self._search_highlight)
+            self._search_highlight = None
+
     def highlight(self, bounds: tuple[float, float, float, float], page: int) -> None:
+        self.clear_search_highlight()
         x0, y0, x1, y1 = bounds
         origin = self._page_rects[page].topLeft()
-        self._scene.addRect(
+        self._search_highlight = self._scene.addRect(
             QRectF(origin.x() + x0 * self._zoom, origin.y() + y0 * self._zoom,
                    (x1 - x0) * self._zoom, (y1 - y0) * self._zoom),
             QPen(QColor("#e6aa00"), 2), QBrush(QColor(255, 210, 0, 70)),

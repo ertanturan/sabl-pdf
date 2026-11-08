@@ -5,8 +5,9 @@ from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStyle, QToolBar, QVBoxLayout, QWidget
 
 from sabl_pdf.core.session import DocumentSession
-from sabl_pdf.services.viewer import ViewerService
+from sabl_pdf.services.viewer import SearchMatch, ViewerService
 from sabl_pdf.ui.canvas import PdfCanvas
+from sabl_pdf.ui.search_bar import SearchBar
 from sabl_pdf.ui.viewer_actions import ViewerActions
 from sabl_pdf.services.text_boxes import TextBoxService
 from sabl_pdf.ui.text_actions import TextActions
@@ -51,8 +52,16 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.setContentsMargins(4, 4, 4, 4)
+        self.search_bar = SearchBar(self)
+        layout.addWidget(self.search_bar)
         layout.addWidget(self.canvas)
         self.setCentralWidget(central)
+        self._search_matches: list[SearchMatch] = []
+        self._search_index = -1
+        self.search_bar.search_requested.connect(self._search_query)
+        self.search_bar.next_requested.connect(lambda: self._move_search(1))
+        self.search_bar.previous_requested.connect(lambda: self._move_search(-1))
+        self.search_bar.close_requested.connect(self._close_search)
         self.status = QLabel("Open a PDF to begin")
         self.statusBar().addPermanentWidget(self.status)
         self._build_menu()
@@ -205,6 +214,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
     def _after_edit(self) -> None:
         self._refresh()
+        if self.search_bar.query():
+            self._search_query(self.search_bar.query())
 
 
     def _confirm_changes(self) -> bool:
