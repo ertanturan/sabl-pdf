@@ -1,11 +1,15 @@
 from collections.abc import Callable
 
+from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QToolBar, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QToolBar, QVBoxLayout, QWidget
 
 from sabl_pdf.core.session import DocumentSession
-from sabl_pdf.services.viewer import ViewerService
+from sabl_pdf.services.viewer import SearchMatch, ViewerService
 from sabl_pdf.ui.canvas import PdfCanvas
+from sabl_pdf.ui.search_bar import SearchBar
+from sabl_pdf.ui.welcome_page import WelcomePage
+from sabl_pdf.ui.page_thumbnails import PageThumbnails
 from sabl_pdf.ui.viewer_actions import ViewerActions
 from sabl_pdf.services.text_boxes import TextBoxService
 from sabl_pdf.ui.text_actions import TextActions
@@ -26,8 +30,11 @@ from sabl_pdf.ui.ocr_actions import OcrActions
 
 class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, OcrActions, QMainWindow):
 
-    def __init__(self, session: DocumentSession | None = None) -> None:
+    def __init__(
+        self, session: DocumentSession | None = None, settings: QSettings | None = None
+    ) -> None:
         super().__init__()
+        self._ui_settings = settings or QSettings("SABL", "SABL PDF")
         self.session = session or DocumentSession()
         self.viewer = ViewerService(self.session)
         self.text_boxes = TextBoxService(self.session)
@@ -41,6 +48,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
+        self._active_tool: str | None = None
+        self._document_actions: list[QAction] = []
         self.setWindowTitle("SABL PDF")
         self.resize(1024, 780)
         self.canvas = PdfCanvas()
@@ -50,12 +59,30 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.setContentsMargins(4, 4, 4, 4)
-        layout.addWidget(self.canvas)
+        self.search_bar = SearchBar(self)
+        layout.addWidget(self.search_bar)
+        self.workspace = QStackedWidget(self)
+        self.welcome = WelcomePage(self)
+        self.workspace.addWidget(self.welcome)
+        self.workspace.addWidget(self.canvas)
+        layout.addWidget(self.workspace)
         self.setCentralWidget(central)
+        self.welcome.open_requested.connect(self.open_pdf)
+        self.welcome.file_dropped.connect(self.open_path)
+        self._search_matches: list[SearchMatch] = []
+        self._search_index = -1
+        self.search_bar.search_requested.connect(self._search_query)
+        self.search_bar.next_requested.connect(lambda: self._move_search(1))
+        self.search_bar.previous_requested.connect(lambda: self._move_search(-1))
+        self.search_bar.close_requested.connect(self._close_search)
         self.status = QLabel("Open a PDF to begin")
         self.statusBar().addPermanentWidget(self.status)
         self._build_menu()
         self._build_toolbar()
+        self._build_thumbnails()
+        self._build_toolbar_preferences()
+        self._build_cancel_shortcut()
+        self._set_document_actions_enabled(False)
 
 
     def _action(self, menu, text: str, handler, shortcut: str | None = None) -> QAction:
@@ -64,6 +91,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             action.setShortcut(QKeySequence(shortcut))
         action.triggered.connect(handler)
         menu.addAction(action)
+        if text != "Open PDF":
+            self._document_actions.append(action)
         return action
 
 
@@ -103,21 +132,151 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(tools, "Export OCR text", self.export_ocr)
 
 
+    def _build_thumbnails(self) -> None:
+        self.thumbnails = PageThumbnails(self)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.thumbnails)
+        self.view_menu = self.menuBar().addMenu("View")
+        self.view_menu.addAction(self.thumbnails.toggleViewAction())
+        self.thumbnails.page_selected.connect(self._jump_to_page)
+        self.thumbnails.hide()
+        self._first_thumbnails = True
+
+    def _jump_to_page(self, index: int) -> None:
+        if self._require_document():
+            self.page_index = index
+            self.canvas.scroll_to_page(index)
+
     def _build_toolbar(self) -> None:
-        toolbar = QToolBar("Navigation", self)
+        toolbar = QToolBar("Quick access", self)
+        self._quick_toolbar = toolbar
+        toolbar.setObjectName("quick_access")
         toolbar.setMovable(False)
+        toolbar.setIconSize(QSize(20, 20))
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.addToolBar(toolbar)
+        self.quick_actions: dict[str, QAction] = {}
+        self._toolbar_button(toolbar, "open", "Open", self.open_pdf, "SP_DialogOpenButton")
+        self._toolbar_button(toolbar, "save", "Save", self.save_pdf, "SP_DialogSaveButton")
+        self._toolbar_button(
+            toolbar, "find", "Find", self.search_text, "SP_FileDialogContentsView", "Ctrl+F"
+        )
+        toolbar.addSeparator()
+        self._toolbar_button(
+            toolbar, "text", "Add Text", self.add_text_box, "SP_FileIcon", "Ctrl+Shift+T"
+        )
+        self._toolbar_button(
+            toolbar, "highlight", "Highlight",
+            lambda: self.mark_selection("highlight"), "SP_DialogApplyButton", "Ctrl+Shift+H",
+        )
+        self._toolbar_button(
+            toolbar, "sign", "Sign", self.draw_signature, "SP_FileDialogInfoView", "Ctrl+Alt+S"
+        )
+        toolbar.addSeparator()
+        self._toolbar_button(
+            toolbar, "rotate", "Rotate", self.rotate_page, "SP_BrowserReload", "Ctrl+Shift+R"
+        )
+        self._toolbar_button(
+            toolbar, "compress", "Compress", self.compress_pdf, "SP_DriveHDIcon",
+            "Ctrl+Shift+C"
+        )
+        self._build_navigation_toolbar()
+
+    def _toolbar_button(
+        self, toolbar: QToolBar, key: str, text: str, handler: Callable,
+        icon: str, shortcut: str | None = None,
+    ) -> None:
+        action = QAction(self.style().standardIcon(getattr(QStyle.StandardPixmap, icon)), text, self)
+        action.setObjectName(f"quick_{key}")
+        action.setToolTip(text + (f" ({shortcut})" if shortcut else ""))
+        if shortcut:
+            action.setShortcut(QKeySequence(shortcut))
+            self.addAction(action)
+        if key in {"text", "highlight", "sign"}:
+            action.setCheckable(True)
+        action.triggered.connect(lambda _checked=False: self._invoke_quick_action(key, handler))
+        toolbar.addAction(action)
+        self.quick_actions[key] = action
+
+    def _build_toolbar_preferences(self) -> None:
+        menu = self.view_menu.addMenu("Customize toolbar")
+        self.toolbar_toggles: dict[str, QAction] = {}
+        for key, action in self.quick_actions.items():
+            toggle = menu.addAction(action.text())
+            toggle.setCheckable(True)
+            toggle.setChecked(
+                self._ui_settings.value(f"toolbar/{key}", True, type=bool)
+            )
+            toggle.toggled.connect(
+                lambda checked, action_key=key: self._set_toolbar_visible(action_key, checked)
+            )
+            self.toolbar_toggles[key] = toggle
+        menu.addSeparator()
+        menu.addAction("Reset toolbar", self._reset_toolbar)
+        self._refresh_toolbar()
+
+    def _set_toolbar_visible(self, key: str, visible: bool) -> None:
+        self._ui_settings.setValue(f"toolbar/{key}", visible)
+        self._refresh_toolbar()
+
+    def _reset_toolbar(self) -> None:
+        for action in self.toolbar_toggles.values():
+            action.setChecked(True)
+
+    def _refresh_toolbar(self) -> None:
+        self._quick_toolbar.clear()
+        for group in (("open", "save", "find"), ("text", "highlight", "sign"), ("rotate", "compress")):
+            available = [self.quick_actions[key] for key in group if self.toolbar_toggles[key].isChecked()]
+            if available:
+                if self._quick_toolbar.actions():
+                    self._quick_toolbar.addSeparator()
+                self._quick_toolbar.addActions(available)
+
+    def _invoke_quick_action(self, key: str, handler: Callable) -> None:
+        handler()
+        if key in {"text", "highlight", "sign"} and self._selection_action is None:
+            self._set_active_tool(None)
+
+    def _build_navigation_toolbar(self) -> None:
+        navigation = QToolBar("Page navigation", self)
+        navigation.setObjectName("page_navigation")
+        navigation.setMovable(False)
+        self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, navigation)
+        self.navigation_actions: list[QAction] = []
         for text, handler in [
-            ("Open", self.open_pdf), ("Save", self.save_pdf),
             ("Previous", lambda: self.change_page(-1)),
             ("Next", lambda: self.change_page(1)),
-            ("Zoom -", lambda: self.change_zoom(0.8)),
-            ("Zoom +", lambda: self.change_zoom(1.25)),
-            ("Search", self.search_text),
+            ("Zoom Out", lambda: self.change_zoom(0.8)),
+            ("Zoom In", lambda: self.change_zoom(1.25)),
         ]:
             action = QAction(text, self)
             action.triggered.connect(handler)
-            toolbar.addAction(action)
+            navigation.addAction(action)
+            self.navigation_actions.append(action)
+
+    def _build_cancel_shortcut(self) -> None:
+        cancel_action = QAction(self)
+        cancel_action.setShortcut(QKeySequence("Escape"))
+        cancel_action.triggered.connect(self._cancel_active_tool)
+        self.addAction(cancel_action)
+
+    def _set_document_actions_enabled(self, enabled: bool) -> None:
+        for action in self._document_actions:
+            action.setEnabled(enabled)
+        for key, action in self.quick_actions.items():
+            action.setEnabled(enabled or key == "open")
+        for action in self.navigation_actions:
+            action.setEnabled(enabled)
+
+    def _set_active_tool(self, name: str | None) -> None:
+        self._active_tool = name
+        for key, label in {"text": "Add Text", "highlight": "Highlight", "sign": "Sign"}.items():
+            self.quick_actions[key].setChecked(name == label)
+
+    def _cancel_active_tool(self) -> None:
+        if self._selection_action is not None:
+            self.canvas.cancel_selection()
+        elif self.search_bar.isVisible():
+            self._close_search()
 
 
     def _require_document(self) -> bool:
@@ -138,6 +297,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
     def _refresh(self) -> None:
         document = self.session.document
+        self.workspace.setCurrentWidget(self.canvas)
+        self._set_document_actions_enabled(True)
         if len(document) == 0:
             self.status.setText("No pages")
             self.canvas.display_pages([], self.viewer.render, self.zoom)
@@ -149,6 +310,10 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self.zoom,
         )
         self.page_index = requested_page
+        self.thumbnails.set_document(self.viewer, len(document), requested_page)
+        if self._first_thumbnails:
+            self.thumbnails.show()
+            self._first_thumbnails = False
         self.canvas.scroll_to_page(requested_page)
         self._update_page_status()
         self.setWindowTitle(f"SABL PDF | {self.session.path.name if self.session.path else 'Unsaved'}")
@@ -160,11 +325,15 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
     def _on_page_changed(self, page_index: int) -> None:
         self.page_index = page_index
+        if hasattr(self, "thumbnails"):
+            self.thumbnails.select_page(page_index)
         self._update_page_status()
 
 
     def _after_edit(self) -> None:
         self._refresh()
+        if self.search_bar.query():
+            self._search_query(self.search_bar.query())
 
 
     def _confirm_changes(self) -> bool:
@@ -190,10 +359,12 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         callback: Callable[[tuple], None],
         click_size: tuple[float, float] | None = None,
         preview_strokes: list[list[tuple[float, float]]] | None = None,
+        tool_name: str = "Select area",
     ) -> None:
         if not self._require_document():
             return
         self._selection_action = callback
+        self._set_active_tool(tool_name)
         self.canvas.set_selection_enabled(True, click_size, preview_strokes)
         self.status.setText(
             "Click to place or drag to size; right-click to cancel"
@@ -202,6 +373,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
     def _on_selection_cancelled(self) -> None:
         self._selection_action = None
+        self._set_active_tool(None)
         self._update_page_status()
 
 
@@ -209,5 +381,6 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.page_index = page_index
         action = self._selection_action
         self._selection_action = None
+        self._set_active_tool(None)
         if action is not None:
             self._run(lambda: action(rect))

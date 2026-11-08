@@ -4,7 +4,10 @@ from PySide6.QtWidgets import QInputDialog
 class AnnotationActions:
 
     def mark_selection(self, style: str) -> None:
-        self._select_area(lambda bounds: (self.annotations.mark_text(self.page_index, bounds, style), self._after_edit()))
+        self._select_area(
+            lambda bounds: (self.annotations.mark_text(self.page_index, bounds, style), self._after_edit()),
+            tool_name=style.title(),
+        )
 
     def add_note(self) -> None:
         def place(bounds) -> None:
@@ -12,7 +15,7 @@ class AnnotationActions:
             if accepted and note.strip():
                 self.annotations.add_note(self.page_index, (bounds[0], bounds[1]), note)
                 self._after_edit()
-        self._select_area(place)
+        self._select_area(place, tool_name="Add note")
 
     def remove_annotation(self) -> None:
         if not self._require_document():

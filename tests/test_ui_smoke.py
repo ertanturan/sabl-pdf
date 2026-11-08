@@ -150,3 +150,171 @@ def test_damaged_pdf_shows_single_warning(tmp_path, monkeypatch) -> None:
     assert len(messages) == 1
     assert "damaged or missing" in messages[0]
     window.close()
+
+
+def test_quick_access_and_navigation_toolbars() -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtGui import QKeySequence
+    from PySide6.QtWidgets import QApplication, QToolBar
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+
+    assert application is not None
+    assert set(window.quick_actions) == {
+        "open", "save", "find", "text", "highlight", "sign", "rotate", "compress"
+    }
+    assert window.quick_actions["find"].shortcut() == QKeySequence("Ctrl+F")
+    assert window.findChild(QToolBar, "quick_access") is not None
+    assert window.findChild(QToolBar, "page_navigation") is not None
+    window.close()
+
+
+def test_inline_find_navigates_and_clears_highlight(tmp_path) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "searchable.pdf"
+    with fitz.open() as document:
+        for _ in range(2):
+            document.new_page().insert_text((72, 72), "needle in a document")
+        document.save(path)
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(path)
+    window.search_text()
+    window.search_bar.search_input.setText("needle")
+    window._search_query("needle")
+
+    assert application is not None
+    assert window.search_bar.isVisible()
+    assert window.search_bar.results.text() == "1 of 2"
+    assert window.canvas._search_highlight is not None
+
+    from PySide6.QtWidgets import QToolButton
+    window.search_bar.findChild(QToolButton, "search_next").click()
+
+    assert window.page_index == 1
+    assert window.search_bar.results.text() == "2 of 2"
+
+    window._close_search()
+
+    assert not window.search_bar.isVisible()
+    assert window.canvas._search_highlight is None
+    window.close()
+
+
+def test_welcome_screen_switches_to_pdf_viewer(sample_pdf) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+
+    assert application is not None
+    assert window.workspace.currentWidget() is window.welcome
+    assert window.welcome.open_requested is not None
+
+    window.open_path(sample_pdf)
+
+    assert window.workspace.currentWidget() is window.canvas
+    window.close()
+
+
+def test_page_thumbnails_select_and_follow_pages(tmp_path) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "thumbnail-pages.pdf"
+    with fitz.open() as document:
+        for number in range(3):
+            document.new_page(width=350, height=450).insert_text((30, 30), str(number))
+        document.save(path)
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(path)
+    application.processEvents()
+
+    assert window.thumbnails.pages.count() == 3
+    assert window.thumbnails.isVisible()
+
+    window.thumbnails.pages.setCurrentRow(2)
+    application.processEvents()
+
+    assert window.page_index == 2
+    window.canvas.scroll_to_page(1)
+    application.processEvents()
+    assert window.thumbnails.pages.currentRow() == 1
+    window.close()
+
+
+def test_document_actions_and_active_tool_feedback(sample_pdf) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+
+    assert application is not None
+    assert window.quick_actions["open"].isEnabled()
+    assert not window.quick_actions["text"].isEnabled()
+    assert not window.quick_actions["compress"].isEnabled()
+
+    window.open_path(sample_pdf)
+
+    assert window.quick_actions["text"].isEnabled()
+    assert window.quick_actions["compress"].isEnabled()
+
+    window.add_text_box()
+
+    assert window.quick_actions["text"].isChecked()
+    assert window.canvas._selection_enabled
+
+    window._cancel_active_tool()
+
+    assert not window.quick_actions["text"].isChecked()
+    assert not window.canvas._selection_enabled
+    window.close()
+
+
+def test_toolbar_preferences_persist(tmp_path) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import QSettings
+    from PySide6.QtGui import QKeySequence
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    settings = QSettings(str(tmp_path / "toolbar.ini"), QSettings.Format.IniFormat)
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow(settings=settings)
+
+    assert application is not None
+    assert window.quick_actions["highlight"].shortcut() == QKeySequence("Ctrl+Shift+H")
+
+    window.toolbar_toggles["highlight"].setChecked(False)
+
+    assert window.quick_actions["highlight"] not in window._quick_toolbar.actions()
+    window.close()
+
+    reopened = MainWindow(settings=settings)
+
+    assert not reopened.toolbar_toggles["highlight"].isChecked()
+    assert reopened.quick_actions["highlight"] not in reopened._quick_toolbar.actions()
+
+    reopened._reset_toolbar()
+
+    assert reopened.toolbar_toggles["highlight"].isChecked()
+    assert reopened.quick_actions["highlight"] in reopened._quick_toolbar.actions()
+    reopened.close()
