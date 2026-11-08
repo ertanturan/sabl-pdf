@@ -1,6 +1,6 @@
 from pathlib import Path
 import fitz
-from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
+from PySide6.QtWidgets import QApplication, QFileDialog
 
 
 class ViewerActions:
