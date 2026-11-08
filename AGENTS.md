@@ -29,6 +29,18 @@
 - Never create or reopen pull requests without explicit user approval, except when asked to restore existing pull requests.
 - Never merge pull requests. The repository owner merges manually after required CI checks pass.
 
+## Pull request descriptions
+- Create a pull request only after the repository owner explicitly approves its creation.
+- Use four headings: `Change type`, `What changed`, `How to test`, and `Stack`.
+- Write short bullet points under every heading. Avoid paragraphs and broad claims.
+- Label each change as feature, bugfix, tests, docs, refactor, build, or CI. Include every applicable type.
+- Describe changes relative to the immediate parent branch, not `master`.
+- Provide exact test commands and manual steps relevant to the changes.
+- State whether each test was run, passed, failed, skipped, or not run. Never claim a test passed without evidence.
+- Include the head branch, base branch, and previous PR dependency in the Stack section.
+- Update the PR description when its scope or test results change.
+- Keep PR titles short and scoped to one purpose.
+
 ## Change logs
 - Record EVERY feature and bug fix in `docs/changes/YYYY-MM-DD.md` using the date of the change.
 - Each entry includes change, branch, commit scope and corresponding test coverage.
