@@ -405,3 +405,20 @@ def test_tab_close_respects_cancel_and_returns_to_welcome(tmp_path, monkeypatch)
     assert window.workspace.currentWidget() is window.welcome
     assert not window.quick_actions["save"].isEnabled()
     window.close()
+
+
+def test_workspace_has_consistent_toolbar_icons() -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.theme import ICON_PATHS
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+
+    assert application is not None
+    assert "QToolBar#quick_access" in window.styleSheet()
+    assert "QTabBar::tab:selected" in window.styleSheet()
+    assert set(window.quick_actions) == set(ICON_PATHS)
+    assert all(not action.icon().isNull() for action in window.quick_actions.values())
+    window.close()
