@@ -17,6 +17,12 @@ class ViewerActions:
             self.session.open(path)
             self.page_index = 0
             self._refresh()
+            if self.session.open_warnings:
+                QMessageBox.warning(
+                    self, "PDF warnings",
+                    "This PDF contains damaged or missing objects. Some content may be "
+                    "unavailable. Review the pages and use Save as to keep the original.",
+                )
         self._run(action)
 
     def save_pdf(self) -> None:
@@ -37,7 +43,8 @@ class ViewerActions:
     def change_page(self, difference: int) -> None:
         if self._require_document():
             self.page_index = max(0, min(self.page_index + difference, self.viewer.page_count() - 1))
-            self._refresh()
+            self.canvas.scroll_to_page(self.page_index)
+            self._update_page_status()
 
     def change_zoom(self, factor: float) -> None:
         if self._require_document():
@@ -55,8 +62,8 @@ class ViewerActions:
                 return
             match = matches[0]
             self.page_index = match.page
-            self._refresh()
-            self.canvas.highlight(match.bounds)
+            self.canvas.scroll_to_page(match.page)
+            self.canvas.highlight(match.bounds, match.page)
             self.status.setText(f"{len(matches)} matches | showing first on page {match.page + 1}")
 
     def copy_page_text(self) -> None:

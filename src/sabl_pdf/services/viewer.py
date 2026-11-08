@@ -18,6 +18,9 @@ class ViewerService:
     def page_count(self) -> int:
         return len(self._session.document)
 
+    def page_sizes(self) -> list[tuple[float, float]]:
+        return [(page.rect.width, page.rect.height) for page in self._session.document]
+
     def render(self, page: int, zoom: float = 1.0) -> fitz.Pixmap:
         if zoom <= 0 or zoom > 8:
             raise ValueError("Zoom must be greater than zero and at most 8")

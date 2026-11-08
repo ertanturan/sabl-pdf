@@ -45,6 +45,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.resize(1024, 780)
         self.canvas = PdfCanvas()
         self.canvas.area_selected.connect(self._on_area_selected)
+        self.canvas.page_changed.connect(self._on_page_changed)
+        self.canvas.selection_cancelled.connect(self._on_selection_cancelled)
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -80,6 +82,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         signatures = self.menuBar().addMenu("Signatures")
         self._action(signatures, "Import signature image", self.import_signature)
         self._action(signatures, "Draw signature", self.draw_signature)
+        self._action(signatures, "Use saved signature", self.use_saved_signature)
         pages = self.menuBar().addMenu("Pages")
         self._action(pages, "Merge PDF", self.merge_pdf)
         self._action(pages, "Split page range", self.split_pdf)
@@ -137,12 +140,27 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         document = self.session.document
         if len(document) == 0:
             self.status.setText("No pages")
-            self.canvas.scene().clear()
+            self.canvas.display_pages([], self.viewer.render, self.zoom)
             return
-        self.page_index = min(max(0, self.page_index), len(document) - 1)
-        self.canvas.display(self.viewer.render(self.page_index, self.zoom), self.zoom)
-        self.status.setText(f"Page {self.page_index + 1} / {len(document)} | {round(self.zoom * 100)}%")
+        requested_page = min(max(0, self.page_index), len(document) - 1)
+        self.canvas.display_pages(
+            self.viewer.page_sizes(),
+            lambda index: self.viewer.render(index, self.zoom),
+            self.zoom,
+        )
+        self.page_index = requested_page
+        self.canvas.scroll_to_page(requested_page)
+        self._update_page_status()
         self.setWindowTitle(f"SABL PDF | {self.session.path.name if self.session.path else 'Unsaved'}")
+
+    def _update_page_status(self) -> None:
+        self.status.setText(
+            f"Page {self.page_index + 1} / {self.viewer.page_count()} | {round(self.zoom * 100)}%"
+        )
+
+    def _on_page_changed(self, page_index: int) -> None:
+        self.page_index = page_index
+        self._update_page_status()
 
 
     def _after_edit(self) -> None:
@@ -167,15 +185,28 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         event.accept()
 
 
-    def _select_area(self, callback: Callable[[tuple], None]) -> None:
+    def _select_area(
+        self,
+        callback: Callable[[tuple], None],
+        click_size: tuple[float, float] | None = None,
+        preview_strokes: list[list[tuple[float, float]]] | None = None,
+    ) -> None:
         if not self._require_document():
             return
         self._selection_action = callback
-        self.canvas.set_selection_enabled(True)
-        self.status.setText("Drag a rectangle on the page")
+        self.canvas.set_selection_enabled(True, click_size, preview_strokes)
+        self.status.setText(
+            "Click to place or drag to size; right-click to cancel"
+            if click_size else "Drag a rectangle on the page; right-click to cancel"
+        )
+
+    def _on_selection_cancelled(self) -> None:
+        self._selection_action = None
+        self._update_page_status()
 
 
-    def _on_area_selected(self, rect: tuple) -> None:
+    def _on_area_selected(self, page_index: int, rect: tuple) -> None:
+        self.page_index = page_index
         action = self._selection_action
         self._selection_action = None
         if action is not None:

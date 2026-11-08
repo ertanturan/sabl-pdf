@@ -66,3 +66,32 @@ def test_save_as_then_save_updates_new_destination(session: DocumentSession, tmp
 
     with fitz.open(destination) as saved:
         assert "Second save" in saved[0].get_text()
+
+def test_open_pdf_with_missing_content_warns_without_losing_pages(tmp_path: Path) -> None:
+    source = tmp_path / "broken-content.pdf"
+    with fitz.open() as document:
+        document.new_page().insert_text((30, 30), "Original content")
+        data = document.tobytes()
+    data = data.replace(b"Contents[6 0 R]", b"Contents[9 0 R]")
+    assert data != b""
+    source.write_bytes(data)
+    session = DocumentSession()
+
+    session.open(source)
+
+    assert session.open_warnings is True
+    assert len(session.document) == 1
+    assert source.read_bytes() == data
+    session.close()
+
+
+def test_invalid_pdf_keeps_the_previous_document(session: DocumentSession, tmp_path: Path) -> None:
+    invalid = tmp_path / "invalid.pdf"
+    invalid.write_bytes(b"This is not a PDF")
+    original_path = session.path
+
+    with pytest.raises(ValueError, match="Cannot open this PDF"):
+        session.open(invalid)
+
+    assert session.path == original_path
+    assert len(session.document) == 1
