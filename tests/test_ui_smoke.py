@@ -224,7 +224,7 @@ def test_welcome_screen_switches_to_pdf_viewer(sample_pdf) -> None:
 
     window.open_path(sample_pdf)
 
-    assert window.workspace.currentWidget() is window.canvas
+    assert window.workspace.currentWidget() is window.document_tabs
     window.close()
 
 
@@ -319,6 +319,92 @@ def test_toolbar_preferences_persist(tmp_path) -> None:
     assert reopened.quick_actions["highlight"] in reopened._quick_toolbar.actions()
     reopened.close()
 
+
+def test_document_tabs_keep_separate_documents_and_view_state(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    first = tmp_path / "first.pdf"
+    second = tmp_path / "second.pdf"
+    with fitz.open() as document:
+        document.new_page().insert_text((50, 50), "First document")
+        document.new_page().insert_text((50, 50), "Second page")
+        document.save(first)
+    with fitz.open() as document:
+        document.new_page().insert_text((50, 50), "Other document")
+        document.save(second)
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(first)
+    window.zoom = 1.4
+    window.canvas.scroll_to_page(1)
+    window.page_index = 1
+    window.text_boxes.add(0, (30, 60, 220, 120), "First only")
+    window._after_edit()
+    window.open_path(second)
+
+    assert application is not None
+    assert window.document_tabs.count() == 2
+    assert "Other document" in window.viewer.text(0)
+    assert not window.text_boxes.list(0)
+
+    window.document_tabs.setCurrentIndex(0)
+
+    assert "First document" in window.viewer.text(0)
+    assert window.page_index == 1
+    assert window.zoom == 1.4
+    assert len(window.text_boxes.list(0)) == 1
+    assert "*" in window.document_tabs.tabText(0)
+
+    window.open_path(first)
+
+    assert window.document_tabs.count() == 2
+    assert window.document_tabs.currentIndex() == 0
+
+    monkeypatch.setattr(window, "_confirm_changes", lambda: True)
+    window.close()
+
+
+def test_tab_close_respects_cancel_and_returns_to_welcome(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication, QMessageBox
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "unsaved.pdf"
+    with fitz.open() as document:
+        document.new_page()
+        document.save(path)
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(path)
+    window.session.mark_dirty()
+    window._refresh()
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *args: QMessageBox.StandardButton.Cancel
+    )
+
+    window._close_document_tab(0)
+
+    assert application is not None
+    assert window.document_tabs.count() == 1
+    assert window.session.dirty
+
+    monkeypatch.setattr(
+        QMessageBox, "question", lambda *args: QMessageBox.StandardButton.Discard
+    )
+    window._close_document_tab(0)
+
+    assert window.document_tabs.count() == 0
+    assert window.workspace.currentWidget() is window.welcome
+    assert not window.quick_actions["save"].isEnabled()
+    window.close()
 
 def test_select_and_delete_text_box_by_click(sample_pdf, monkeypatch) -> None:
     pytest.importorskip("PySide6")
