@@ -45,6 +45,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.resize(1024, 780)
         self.canvas = PdfCanvas()
         self.canvas.area_selected.connect(self._on_area_selected)
+        self.canvas.page_changed.connect(self._on_page_changed)
         central = QWidget()
         layout = QVBoxLayout(central)
         layout.setContentsMargins(4, 4, 4, 4)
@@ -137,12 +138,27 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         document = self.session.document
         if len(document) == 0:
             self.status.setText("No pages")
-            self.canvas.scene().clear()
+            self.canvas.display_pages([], self.viewer.render, self.zoom)
             return
-        self.page_index = min(max(0, self.page_index), len(document) - 1)
-        self.canvas.display(self.viewer.render(self.page_index, self.zoom), self.zoom)
-        self.status.setText(f"Page {self.page_index + 1} / {len(document)} | {round(self.zoom * 100)}%")
+        requested_page = min(max(0, self.page_index), len(document) - 1)
+        self.canvas.display_pages(
+            self.viewer.page_sizes(),
+            lambda index: self.viewer.render(index, self.zoom),
+            self.zoom,
+        )
+        self.page_index = requested_page
+        self.canvas.scroll_to_page(requested_page)
+        self._update_page_status()
         self.setWindowTitle(f"SABL PDF | {self.session.path.name if self.session.path else 'Unsaved'}")
+
+    def _update_page_status(self) -> None:
+        self.status.setText(
+            f"Page {self.page_index + 1} / {self.viewer.page_count()} | {round(self.zoom * 100)}%"
+        )
+
+    def _on_page_changed(self, page_index: int) -> None:
+        self.page_index = page_index
+        self._update_page_status()
 
 
     def _after_edit(self) -> None:
@@ -175,7 +191,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.status.setText("Drag a rectangle on the page")
 
 
-    def _on_area_selected(self, rect: tuple) -> None:
+    def _on_area_selected(self, page_index: int, rect: tuple) -> None:
+        self.page_index = page_index
         action = self._selection_action
         self._selection_action = None
         if action is not None:

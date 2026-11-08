@@ -36,3 +36,8 @@ def test_zoom_out_of_range_is_rejected(session: DocumentSession) -> None:
 
     with pytest.raises(ValueError):
         service.render(0, 0)
+
+def test_page_sizes_match_pdf(session: DocumentSession) -> None:
+    service = ViewerService(session)
+
+    assert service.page_sizes() == [(300.0, 400.0)]
