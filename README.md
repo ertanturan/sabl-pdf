@@ -17,6 +17,31 @@ No account. No advertising. No telemetry. No subscriptions.
 
 Existing PDF page text is not edited in-place. Newly added text remains editable until the annotation is flattened externally. Signatures are visual marks, not certificate-based digital signatures.
 
+## Using the workspace
+
+- Open a PDF with **Ctrl+O** or drag it onto the welcome screen.
+- Open multiple PDFs in tabs. Each tab keeps its own page, zoom, search and edits. Use **Ctrl+W** to close a tab. SABL asks whether to save unsaved changes.
+- Use the quick-access toolbar for **Open**, **Save**, **Find**, **Add Text**, **Highlight**, **Sign**, **Rotate** and **Compress**.
+- Show or hide buttons through **View > Customize toolbar**. **Reset toolbar** restores the default arrangement.
+- Click **Find** or use **Ctrl+F** to see matching text and move between matches.
+- Use the **Pages** sidebar to jump to pages. Close the sidebar when you want more reading space.
+- While placing text, annotations or signatures, click or drag on a page. Press **Escape** or right-click to cancel placement.
+
+| Shortcut | Action |
+| --- | --- |
+| Ctrl+O | Open another PDF |
+| Ctrl+S | Save the current PDF |
+| Ctrl+W | Close the current tab |
+| Ctrl+F | Find text in the current PDF |
+| Ctrl+Shift+T | Add a text box annotation |
+| Ctrl+Shift+H | Highlight an area |
+| Ctrl+Alt+S | Draw and place a visual signature |
+| Ctrl+Shift+R | Rotate the current page |
+| Ctrl+Shift+C | Compress to a separate PDF file |
+| Escape | Cancel placement or close Find |
+
+The **Sign** toolbar action creates a drawn signature mark, not a certificate-based digital signature. Native text editing and permanent redaction are separate planned features.
+
 ## Local development on Windows
 
 Requires Python 3.12+ installed and available through `py` or `python`. Double-click these files in the repository root:
