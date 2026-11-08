@@ -287,3 +287,34 @@ def test_document_actions_and_active_tool_feedback(sample_pdf) -> None:
     assert not window.quick_actions["text"].isChecked()
     assert not window.canvas._selection_enabled
     window.close()
+
+
+def test_toolbar_preferences_persist(tmp_path) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import QSettings
+    from PySide6.QtGui import QKeySequence
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    settings = QSettings(str(tmp_path / "toolbar.ini"), QSettings.Format.IniFormat)
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow(settings=settings)
+
+    assert application is not None
+    assert window.quick_actions["highlight"].shortcut() == QKeySequence("Ctrl+Shift+H")
+
+    window.toolbar_toggles["highlight"].setChecked(False)
+
+    assert window.quick_actions["highlight"] not in window._quick_toolbar.actions()
+    window.close()
+
+    reopened = MainWindow(settings=settings)
+
+    assert not reopened.toolbar_toggles["highlight"].isChecked()
+    assert reopened.quick_actions["highlight"] not in reopened._quick_toolbar.actions()
+
+    reopened._reset_toolbar()
+
+    assert reopened.toolbar_toggles["highlight"].isChecked()
+    assert reopened.quick_actions["highlight"] in reopened._quick_toolbar.actions()
+    reopened.close()
