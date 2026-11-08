@@ -20,9 +20,11 @@ from sabl_pdf.services.compression import CompressionService
 from sabl_pdf.ui.compression_actions import CompressionActions
 from sabl_pdf.services.conversion import ConversionService
 from sabl_pdf.ui.conversion_actions import ConversionActions
+from sabl_pdf.services.ocr import OcrService
+from sabl_pdf.ui.ocr_actions import OcrActions
 
 
-class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, QMainWindow):
+class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, OcrActions, QMainWindow):
 
     def __init__(self, session: DocumentSession | None = None) -> None:
         super().__init__()
@@ -35,6 +37,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.annotations = AnnotationService(self.session)
         self.compression = CompressionService(self.session)
         self.conversion = ConversionService(self.session)
+        self.ocr = OcrService(self.session)
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
@@ -93,6 +96,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(tools, "Compress to file", self.compress_pdf)
         self._action(tools, "Add images as pages", self.add_images)
         self._action(tools, "Export pages as images", self.export_images)
+        self._action(tools, "OCR current page", self.ocr_page)
+        self._action(tools, "Export OCR text", self.export_ocr)
 
 
     def _build_toolbar(self) -> None:
