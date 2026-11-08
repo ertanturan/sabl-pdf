@@ -257,3 +257,33 @@ def test_page_thumbnails_select_and_follow_pages(tmp_path) -> None:
     application.processEvents()
     assert window.thumbnails.pages.currentRow() == 1
     window.close()
+
+
+def test_document_actions_and_active_tool_feedback(sample_pdf) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+
+    assert application is not None
+    assert window.quick_actions["open"].isEnabled()
+    assert not window.quick_actions["text"].isEnabled()
+    assert not window.quick_actions["compress"].isEnabled()
+
+    window.open_path(sample_pdf)
+
+    assert window.quick_actions["text"].isEnabled()
+    assert window.quick_actions["compress"].isEnabled()
+
+    window.add_text_box()
+
+    assert window.quick_actions["text"].isChecked()
+    assert window.canvas._selection_enabled
+
+    window._cancel_active_tool()
+
+    assert not window.quick_actions["text"].isChecked()
+    assert not window.canvas._selection_enabled
+    window.close()
