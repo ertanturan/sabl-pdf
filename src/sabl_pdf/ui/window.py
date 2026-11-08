@@ -14,9 +14,11 @@ from sabl_pdf.services.signatures import SignatureService
 from sabl_pdf.ui.signature_actions import SignatureActions
 from sabl_pdf.services.pages import PageService
 from sabl_pdf.ui.page_actions import PageActions
+from sabl_pdf.services.annotations import AnnotationService
+from sabl_pdf.ui.annotation_actions import AnnotationActions
 
 
-class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, QMainWindow):
+class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, QMainWindow):
 
     def __init__(self, session: DocumentSession | None = None) -> None:
         super().__init__()
@@ -26,6 +28,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, QMai
         self.forms = FormService(self.session)
         self.signatures = SignatureService(self.session)
         self.pages = PageService(self.session)
+        self.annotations = AnnotationService(self.session)
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
@@ -75,6 +78,11 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, QMai
         self._action(pages, "Rotate page", self.rotate_page)
         self._action(pages, "Move page earlier", lambda: self.move_page(-1))
         self._action(pages, "Move page later", lambda: self.move_page(1))
+        annotations = self.menuBar().addMenu("Annotations")
+        self._action(annotations, "Highlight selection", lambda: self.mark_selection("highlight"))
+        self._action(annotations, "Underline selection", lambda: self.mark_selection("underline"))
+        self._action(annotations, "Add note", self.add_note)
+        self._action(annotations, "Remove annotation", self.remove_annotation)
 
     def _build_toolbar(self) -> None:
         toolbar = QToolBar("Navigation", self)
