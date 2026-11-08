@@ -3,7 +3,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QTabWidget, QToolBar, QVBoxLayout, QWidget
 
 from sabl_pdf.core.session import DocumentSession
 from sabl_pdf.services.viewer import SearchMatch, ViewerService
@@ -12,6 +12,7 @@ from sabl_pdf.ui.document_tab import DocumentTab
 from sabl_pdf.ui.search_bar import SearchBar
 from sabl_pdf.ui.welcome_page import WelcomePage
 from sabl_pdf.ui.page_thumbnails import PageThumbnails
+from sabl_pdf.ui.theme import APP_STYLESHEET, toolbar_icon
 from sabl_pdf.ui.viewer_actions import ViewerActions
 from sabl_pdf.services.text_boxes import TextBoxService
 from sabl_pdf.ui.text_actions import TextActions
@@ -36,6 +37,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self, session: DocumentSession | None = None, settings: QSettings | None = None
     ) -> None:
         super().__init__()
+        self.setStyleSheet(APP_STYLESHEET)
         self._ui_settings = settings or QSettings("SABL", "SABL PDF")
         self._initial_session = session
         self._active_tab: DocumentTab | None = None
@@ -319,28 +321,28 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.addToolBar(toolbar)
         self.quick_actions: dict[str, QAction] = {}
-        self._toolbar_button(toolbar, "open", "Open", self.open_pdf, "SP_DialogOpenButton")
-        self._toolbar_button(toolbar, "save", "Save", self.save_pdf, "SP_DialogSaveButton")
+        self._toolbar_button(toolbar, "open", "Open", self.open_pdf, "open")
+        self._toolbar_button(toolbar, "save", "Save", self.save_pdf, "save")
         self._toolbar_button(
-            toolbar, "find", "Find", self.search_text, "SP_FileDialogContentsView", "Ctrl+F"
+            toolbar, "find", "Find", self.search_text, "find", "Ctrl+F"
         )
         toolbar.addSeparator()
         self._toolbar_button(
-            toolbar, "text", "Add Text", self.add_text_box, "SP_FileIcon", "Ctrl+Shift+T"
+            toolbar, "text", "Add Text", self.add_text_box, "text", "Ctrl+Shift+T"
         )
         self._toolbar_button(
             toolbar, "highlight", "Highlight",
-            lambda: self.mark_selection("highlight"), "SP_DialogApplyButton", "Ctrl+Shift+H",
+            lambda: self.mark_selection("highlight"), "highlight", "Ctrl+Shift+H",
         )
         self._toolbar_button(
-            toolbar, "sign", "Sign", self.draw_signature, "SP_FileDialogInfoView", "Ctrl+Alt+S"
+            toolbar, "sign", "Sign", self.draw_signature, "sign", "Ctrl+Alt+S"
         )
         toolbar.addSeparator()
         self._toolbar_button(
-            toolbar, "rotate", "Rotate", self.rotate_page, "SP_BrowserReload", "Ctrl+Shift+R"
+            toolbar, "rotate", "Rotate", self.rotate_page, "rotate", "Ctrl+Shift+R"
         )
         self._toolbar_button(
-            toolbar, "compress", "Compress", self.compress_pdf, "SP_DriveHDIcon",
+            toolbar, "compress", "Compress", self.compress_pdf, "compress",
             "Ctrl+Shift+C"
         )
         self._build_navigation_toolbar()
@@ -349,7 +351,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self, toolbar: QToolBar, key: str, text: str, handler: Callable,
         icon: str, shortcut: str | None = None,
     ) -> None:
-        action = QAction(self.style().standardIcon(getattr(QStyle.StandardPixmap, icon)), text, self)
+        action = QAction(toolbar_icon(icon), text, self)
         action.setObjectName(f"quick_{key}")
         action.setToolTip(text + (f" ({shortcut})" if shortcut else ""))
         if shortcut:
