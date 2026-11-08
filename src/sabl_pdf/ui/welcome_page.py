@@ -25,7 +25,7 @@ class WelcomePage(QWidget):
         button.setObjectName("welcome_open")
         button.setMinimumSize(180, 44)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
-        button.clicked.connect(self.open_requested.emit)
+        button.clicked.connect(lambda _checked=False: self.open_requested.emit())
         layout.addWidget(heading)
         layout.addWidget(instruction)
         layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignHCenter)

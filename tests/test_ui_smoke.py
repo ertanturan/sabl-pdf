@@ -207,3 +207,22 @@ def test_inline_find_navigates_and_clears_highlight(tmp_path) -> None:
     assert not window.search_bar.isVisible()
     assert window.canvas._search_highlight is None
     window.close()
+
+
+def test_welcome_screen_switches_to_pdf_viewer(sample_pdf) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+
+    assert application is not None
+    assert window.workspace.currentWidget() is window.welcome
+    assert window.welcome.open_requested is not None
+
+    window.open_path(sample_pdf)
+
+    assert window.workspace.currentWidget() is window.canvas
+    window.close()
