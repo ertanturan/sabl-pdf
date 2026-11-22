@@ -565,3 +565,36 @@ def test_note_placement_has_cursor_preview(sample_pdf, monkeypatch) -> None:
     assert window.canvas._preview_item is None
     monkeypatch.setattr(window, "_confirm_changes", lambda: True)
     window.close()
+
+
+def test_drag_text_selection_and_copy(sample_pdf, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(sample_pdf)
+    application.processEvents()
+    glyphs = window.session.document[0].get_text("rawdict")["blocks"][0]["lines"][0]["spans"][0]["chars"]
+    page = window.canvas._page_rects[0]
+    beginning = glyphs[0]["bbox"]
+    ending = glyphs[4]["bbox"]
+    origin = window.canvas.mapFromScene(page.left() + beginning[0], page.top() + beginning[1] + 2)
+    target = window.canvas.mapFromScene(page.left() + ending[2], page.top() + ending[1] + 2)
+
+    QTest.mousePress(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=origin)
+    QTest.mouseMove(window.canvas.viewport(), target)
+    QTest.mouseRelease(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=target)
+    window.copy_selection()
+
+    assert window.canvas.selected_text() == "Hello"
+    assert QApplication.clipboard().text() == "Hello"
+    assert len(window.canvas._text_highlights) == 1
+    window.canvas.clear_text_selection()
+    assert window.canvas.selected_text() == ""
+    monkeypatch.setattr(window, "_confirm_changes", lambda: True)
+    window.close()
