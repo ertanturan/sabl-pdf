@@ -1,28 +1,154 @@
-name: Windows installer
+name: Publish Windows installer
+
 on:
   workflow_dispatch:
-  push:
-    tags: ['v*']
+    inputs:
+      bump:
+        description: Version component to increase
+        type: choice
+        required: true
+        default: minor
+        options:
+          - minor
+          - secondary
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sabl-pdf-manual-release
+  cancel-in-progress: false
+
 jobs:
-  installer:
+  release:
+    if: github.ref == 'refs/heads/master'
     runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      PUBLIC_RELEASE_REPO: ertanturan/sabl-pdf-releases
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Check public release repository
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+        run: |
+          if (-not $env:GH_TOKEN) { throw 'Set PUBLIC_RELEASE_TOKEN with Contents write access to the public binary release repository.' }
+          $visibility = gh repo view $env:PUBLIC_RELEASE_REPO --json visibility --jq '.visibility'
+          if ($LASTEXITCODE -ne 0 -or $visibility -ne 'PUBLIC') { throw 'Create the public sabl-pdf-releases repository first.' }
+      - name: Prepare version and changelog
+        id: version
+        shell: pwsh
+        env:
+          BUMP_PART: ${{ inputs.bump }}
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+        run: |
+          $version = python scripts/release.py prepare --part $env:BUMP_PART
+          if ($LASTEXITCODE -ne 0) { throw 'Release preparation failed.' }
+          $version = $version.Trim()
+          $tag = "v$version"
+          git show-ref --verify --quiet "refs/tags/$tag"
+          if ($LASTEXITCODE -eq 0) { throw "Tag $tag already exists." }
+          gh release view $tag -R $env:PUBLIC_RELEASE_REPO *> $null
+          if ($LASTEXITCODE -eq 0) { throw "Public release $tag already exists." }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          "branch=release/$tag" >> $env:GITHUB_OUTPUT
+      - name: Create versioned source commit
+        shell: pwsh
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c $env:RELEASE_BRANCH
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot create release branch.' }
+          git add pyproject.toml src/sabl_pdf/__init__.py installer/SABL-PDF.iss docs/changelog/current.md docs/changelog/releases CHANGELOG.md
+          git diff --cached --check
+          if ($LASTEXITCODE -ne 0) { throw 'Invalid changelog changes.' }
+          git commit -m "release: freeze $env:TAG"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot commit versioned release.' }
+          git tag -a $env:TAG -m "SABL PDF $env:TAG"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot create release tag.' }
       - name: Install Inno Setup
-        shell: powershell
+        shell: pwsh
         run: choco install innosetup -y --no-progress
       - name: Bundle English OCR data
-        shell: powershell
+        shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force installer/tessdata
+          New-Item -ItemType Directory -Force installer/tessdata | Out-Null
           Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/main/eng.traineddata' -OutFile 'installer/tessdata/eng.traineddata'
-      - name: Build executable
-        shell: powershell
+      - name: Test and build installer
+        shell: pwsh
         run: ./scripts/build.ps1 -NoVersionBump
+      - name: Smoke-test installer and create checksum
+        id: asset
+        shell: pwsh
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          $filename = "SABL-PDF-Setup-$env:TAG-x64.exe"
+          $installer = Join-Path 'dist/installer' $filename
+          if (-not (Test-Path -LiteralPath $installer)) { throw "Missing installer: $installer" }
+          $installPath = Join-Path $env:RUNNER_TEMP 'SABL PDF smoke'
+          $p = Start-Process -FilePath (Resolve-Path $installer) -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=$installPath") -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Installer failed: $($p.ExitCode)" }
+          if (-not (Test-Path (Join-Path $installPath 'SABL PDF.exe'))) { throw 'Smoke test did not install the executable.' }
+          $checksum = "$installer.sha256"
+          $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $filename" | Set-Content -LiteralPath $checksum -Encoding ascii
+          "installer=$installer" >> $env:GITHUB_OUTPUT
+          "checksum=$checksum" >> $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@v4
         with:
-          name: SABL-PDF-Setup
-          path: dist/installer/*.exe
+          name: SABL-PDF-${{ steps.version.outputs.tag }}
+          path: |
+            ${{ steps.asset.outputs.installer }}
+            ${{ steps.asset.outputs.checksum }}
+          if-no-files-found: error
+      - name: Stage public release as draft
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          INSTALLER: ${{ steps.asset.outputs.installer }}
+          CHECKSUM: ${{ steps.asset.outputs.checksum }}
+        run: |
+          $notes = "docs/changelog/releases/$env:TAG.md"
+          gh release create $env:TAG $env:INSTALLER $env:CHECKSUM -R $env:PUBLIC_RELEASE_REPO --draft --title "SABL PDF $env:TAG" --notes-file $notes
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot stage public GitHub Release.' }
+      - name: Push release record and open PR
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_BRANCH: ${{ steps.version.outputs.branch }}
+        run: |
+          git push origin "HEAD:refs/heads/$env:RELEASE_BRANCH"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot push release branch.' }
+          git push origin "refs/tags/$env:TAG"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot push source release tag.' }
+          $body = @(
+            '## Change type', '- Build', '- Docs', '',
+            '## What changed', '- Freeze version and release notes.', '- Rebuild history without modifying older versions.', '',
+            '## How to test', '- Windows GitHub Actions build and installer smoke test passed.', '- Run: python scripts/release.py verify-history', '',
+            '## Stack', "- Head: $env:RELEASE_BRANCH", '- Base: master', '- Previous PR: none. Merge manually before another release.'
+          ) -join [Environment]::NewLine
+          gh pr create -R $env:GITHUB_REPOSITORY --base master --head $env:RELEASE_BRANCH --title "release: record $env:TAG" --body $body
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot create release PR. Public release remains a draft.' }
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release edit $env:TAG -R $env:PUBLIC_RELEASE_REPO --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Public release remains a draft; resolve the error.' }
