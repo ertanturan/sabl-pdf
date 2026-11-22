@@ -69,7 +69,7 @@ Installed SABL: Qt update checker
 ## Proposed implementation sequence
 
 1. **Release foundation PR:** shared version derivation, tagged release validation, frozen changelog gating and GitHub release publishing (depends on the changelog plan).
-2. **Update detection PR:** pure version/manifest service, offline tests and PySide6 update notification, manual checking and privacy settings.
+2. **Update detection PR:** implemented in `feature/manual-check-for-updates` with a pure version comparator, startup and manual GitHub checks, a persistent notice, offline cache, and privacy toggle. Signed manifest verification remains in the next stage.
 3. **Verified delivery PR:** signed-manifest verification, download state/progress, cancellation and retry, tests for bad signatures and corrupt assets.
 4. **Install and resume PR:** safe unsaved-document handling, installer handoff, close/relaunch and tests for interrupted installs.
 5. **Windows release smoke PR:** test upgrading an installed old version to a new one, preserving app data, uninstaller metadata and file association.
