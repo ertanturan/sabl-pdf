@@ -68,7 +68,7 @@
 - All GitHub Releases must contain only the matching version's new features, bugfixes, performance improvements, and documentation changes. Enable immutable GitHub Releases to protect published notes, tags, and assets.
 
 ## Build versioning
-- Normal local `build.cmd` and `scripts/build.ps1` invocations increase the last (`z`) component of `x.y.z` exactly once after prerequisites are available. Explicit `-Minor` does the same; `-Secondary` increases `y` and resets `z`; `-Major` increases `x` and resets `y.z`.
+- Only the manually triggered `Publish Windows installer` GitHub Actions workflow increases a version automatically. It defaults to the last (`z`) component of `x.y.z`; selecting `secondary` increases `y` and resets `z`, while `major` increases `x` and resets `y.z`. Ordinary CI checks and local builds preserve the existing version. Explicit local `-Minor`, `-Secondary` and `-Major` remain available for deliberate development builds.
 - Bumping must synchronise project metadata, Python application version and installer version before testing and packaging. Treat `pyproject.toml` as authoritative.
 - Tagged release builds MUST use `-NoVersionBump` and must reject a tag differing from the version files; a release must be reproducible from its tagged commit.
 - Never modify any published changelog as a side effect of version bumps. Only the current unreleased draft is writable when the changelog implementation is added.
