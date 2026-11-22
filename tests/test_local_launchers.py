@@ -177,6 +177,7 @@ def test_first_release_lookup_uses_successful_list_command() -> None:
     assert 'if ($releaseTags -contains $tag) { throw "Release $tag already exists." }' in workflow
     assert workflow.index("gh release list") < workflow.index('"version=$version" >> $env:GITHUB_OUTPUT')
 
+
 def test_windows_pyright_uses_installed_virtual_environment() -> None:
     script_path = ROOT / "scripts" / "test.ps1"
 
