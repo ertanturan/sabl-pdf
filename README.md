@@ -31,17 +31,43 @@ Requires **Python 3.12+** available as `py` or `python`. From a checkout, double
 | --- | --- |
 | `run.cmd` | Creates/reuses `.venv`, installs project and development dependencies, and opens the app. |
 | `test.cmd` | Prepares the environment, then runs pytest, Python compilation and Ruff. |
-| `build.cmd` | Runs checks, builds the app with PyInstaller and creates the installer with Inno Setup 6. |
+| `build.cmd` | Checks the existing version, runs tests, builds with PyInstaller and creates the Windows installer. |
 
 The PowerShell equivalents are `./scripts/run.ps1`, `./scripts/test.ps1` and `./scripts/build.ps1`. The `.cmd` launchers are intended for double-clicking; they invoke PowerShell without requiring a permanent execution-policy change. Tests use Qt offscreen mode.
+
+### Build version numbers
+
+The manually triggered GitHub release workflow increments the version automatically. SABL uses `x.y.z` with `x` as major, `y` as secondary and `z` as minor. Ordinary local and CI builds preserve their current version.
+
+| Command | Example from `0.1.9` |
+| --- | --- |
+| GitHub Actions release: `minor` (default) | `0.1.10` |
+| GitHub Actions release: `secondary` | `0.2.0` |
+| GitHub Actions release: `major` | `1.0.0` |
+| `build.cmd` (normal local build) | `0.1.9` |
+
+### Publish a Windows installer
+
+The release action is **manual only**. After this workflow is merged into `master`:
+
+1. Create a separate **public** repository called `ertanturan/sabl-pdf-releases`; the SABL source repository is private.
+2. Add two GitHub Actions secrets to the private source repository: `PUBLIC_RELEASE_TOKEN`, a fine-grained token with Contents read/write for the public releases repository; and `SOURCE_RELEASE_TOKEN`, a fine-grained token with Pull requests read/write for the private source repository. Grant the source workflow `contents: write` permission so it can push a versioned branch and tag. Repository rules must permit those pushes. The source token lets release-record PRs trigger required CI checks.
+3. Edit `docs/changelog/current.md` on `master` to describe what is shipping. Use the four required categories.
+4. Open **Actions > Publish Windows installer > Run workflow** on the `master` branch and choose `minor`, `secondary` or `major`. The default is `minor`.
+5. GitHub validates changelog history, increases the selected component, runs the tests, builds and smoke-tests the installer, generates its SHA-256 checksum, and publishes a versioned installer with only this release's notes to the public distribution repository.
+6. GitHub opens a release-record PR back to the private source repository. **Merge this PR manually before starting another release**, keeping project versions and changelog history in sync.
+
+A failed workflow does not publish a successful release automatically; a staged draft or release branch may require manual inspection. Check the run's results before sharing a download.
+
+A local `build.cmd` does not publish a release or increment any component by default. For an explicit local version change, `build.cmd -Minor`, `build.cmd -Secondary` or `build.cmd -Major` remain available, and `build.cmd -NoVersionBump` explicitly preserves the version. A local change must be committed through a PR before an official GitHub release. The tagged source commit and release snapshots must stay unchanged.
 
 After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen. Use **Ctrl+F** to search, **Ctrl+S** to save, or **File > Save as** to write a separate copy.
 
 ### Build and OCR prerequisites
 
-- Install **Inno Setup 6** before running `build.cmd`. The installer is written to `dist/installer/SABL-PDF-Setup.exe`.
+- Install **Inno Setup 6** before running `build.cmd`. The installer is written to `dist/installer/SABL-PDF-Setup-vX.Y.Z-x64.exe` using the checked-out version.
 - **OCR requires Tesseract.** PyMuPDF uses the Tesseract engine built into MuPDF, but needs Tesseract language data (`eng.traineddata` for English). For source runs, install Tesseract OCR with English language data and, if PyMuPDF cannot locate it, set `TESSDATA_PREFIX` to the folder containing `eng.traineddata` (for example, `C:\Program Files\Tesseract-OCR\tessdata`). The Tesseract command-line executable is not called when the data path is provided.
-- For a local installer build, put `eng.traineddata` in `installer/tessdata/` before building. The tagged-release workflow downloads this file for its installer build.
+- For a local installer build, put `eng.traineddata` in `installer/tessdata/` before building. The manually triggered GitHub release workflow downloads it automatically.
 
 ## Important limitations
 

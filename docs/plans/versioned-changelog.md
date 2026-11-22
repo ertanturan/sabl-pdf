@@ -1,6 +1,6 @@
 # Versioned changelog plan
 
-Status: Planned. No release automation is implemented by this document.
+Status: The draft, frozen note snapshot, cumulative generator, integrity check and manually triggered release preparation are implemented in PR #55. Repository release settings and public distribution still require configuration.
 
 ## Goal
 
@@ -32,13 +32,13 @@ A release page receives exactly the contents of its own version file, not the wh
 - Description of the documentation update. (#PR)
 ```
 
-Use `- None.` in an empty section. Entries must say what changed, not promise future work. No generated GitHub commit dump or cumulative notes on an individual release page.
+Use `- None.` in an empty section. Each release-note bullet must be at most 100 characters, including `- `. Split long entries rather than dropping facts. Entries must say what changed, not promise future work. No generated GitHub commit dump or cumulative notes on an individual release page.
 
 ## Working rules
 
 1. During development, edit only `current.md`, assigning each relevant change to exactly one of the four categories and linking its PR. A commit touching multiple categories may have separate entries. Do not invent performance claims.
-2. Keep one shared version source, `pyproject.toml`; build tooling must derive the executable version, Python package version, installer version and release tag from it. Use SemVer tags `vMAJOR.MINOR.PATCH`.
-3. When preparing a release, validate the draft and version, freeze it as `releases/vX.Y.Z.md`, and regenerate `CHANGELOG.md` from all snapshots without changing any prior section's bytes.
+2. Keep one shared version source, `pyproject.toml`. Only manually triggering the GitHub Actions installer release workflow automatically increments `z` in `x.y.z` by default. Its `secondary` option increments `y` and resets `z`; `major` increments `x` and resets `y.z`. Ordinary CI and local builds preserve the version. The release job synchronises Python and Inno Setup versions before building with `-NoVersionBump`. Use SemVer tags `vMAJOR.MINOR.PATCH` (the user's names are major, secondary and minor).
+3. When preparing a release, validate the current draft and version, freeze it as `releases/vX.Y.Z.md`, and regenerate `CHANGELOG.md` from all snapshots without changing any previous release's bytes. The manually triggered release action resets only the current editable draft after freezing. No ordinary build may rewrite previous release history.
 4. Build and test the exact tagged commit; publish the matching release only after checks and a Windows installer smoke test pass. GitHub release notes come solely from `releases/vX.Y.Z.md`.
 5. Once a version is published, lock its snapshot and release metadata. Never modify any earlier version entry in any PR, branch or agent task.
 6. Advance the editable draft to the next intended version only after publishing the current one. Previous released versions remain frozen.

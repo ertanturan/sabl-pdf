@@ -1,10 +1,10 @@
 # GitHub Releases auto-update plan
 
-Status: Planned. The updater, distribution repository and release publishing workflow do not yet exist.
+Status: The manually triggered Windows release workflow is implemented in this PR, but its public distribution repository and secrets must be configured. In-app update detection and one-click installation remain planned.
 
 ## Current state
 
-SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds an onedir executable; Inno Setup 6 builds `dist/installer/SABL-PDF-Setup.exe`. The `.github/workflows/installer.yml` job currently uploads a CI artifact on `v*` tags, not an actual GitHub Release. Version `0.1.0` appears separately in `pyproject.toml`, `src/sabl_pdf/__init__.py` and `installer/SABL-PDF.iss`.
+SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds an onedir executable; Inno Setup 6 builds `dist/installer/SABL-PDF-Setup.exe`. The `.github/workflows/installer.yml` job uses manual `workflow_dispatch` and an automatic selected version increment to build and stage/publish a versioned GitHub Release. Version `0.1.0` appears separately in `pyproject.toml`, `src/sabl_pdf/__init__.py` and `installer/SABL-PDF.iss`.
 
 **Important distribution constraint:** the source repository, `ertanturan/sabl-pdf`, is private. Unauthenticated users cannot get release assets from a private GitHub repository. Keep source private and create a separate public binary-only repository, proposed name `ertanturan/sabl-pdf-releases`. Alternatively, the owner can make the source repository public before shipping. Never embed a GitHub access token or private-repository credential in the installed application.
 
@@ -40,12 +40,12 @@ Installed SABL: Qt update checker
 
 ### Release publication
 
-1. Use the changelog rules in `docs/plans/versioned-changelog.md`. Build only from an approved version tag pointing to tested `master`; require that `pyproject.toml` version, tag, release snapshot, Python executable version and Inno `AppVersion` agree.
+1. Use the changelog rules in `docs/plans/versioned-changelog.md`. A manually triggered workflow on `master` selects the next version (`minor` by default, or `secondary`/`major`), freezes that version's changelog, creates a versioned source commit and tag, and builds from that exact source state. The release-record PR must be merged manually before triggering another release. Require the project, tag, snapshot, application and installer versions to agree.
 2. Extend the existing Windows installer workflow to build, test and smoke-test the tagged release, bundle OCR data, then produce a **versioned** installer filename. Preserve the existing stable Inno `AppId` and installation scope to upgrade in place.
 3. Generate the manifest containing schema version, release SemVer, Windows x64 platform, installer asset name, size, SHA-256, minimum supported app version where applicable and release tag. Sign the manifest using a dedicated release signing key stored outside the source repository (protected CI secrets or an approved signing service). Embed only the trusted public verification key in SABL.
 4. Publish a draft public release with those assets and the frozen file `docs/changelog/releases/vX.Y.Z.md` as its **entire** body. Enable immutable releases in the public repository; publish only after every asset is attached and verified. Configure the stable release as the latest release. Do not publish a public source archive or sensitive build logs.
 5. A publish job needs short-lived, narrowly scoped authorization to the public distribution repository (prefer a GitHub App installation token). Release failures must never produce a partial public stable release. Keep the private source and public distribution tags traceable to the same commit and checksum.
-6. Source repository workflows must still support local `build.cmd` and installer creation without publishing. Existing CI artifacts are not a substitute for release assets.
+6. Ordinary CI and local `build.cmd` builds must never auto-increment versions or publish GitHub Releases. Only the manual GitHub Actions release workflow may bump versions automatically and distribute the binary. Explicit local version bump flags remain available for development. The installer packaging step always passes `-NoVersionBump` to preserve the version prepared for that release. Existing CI artifacts are not substitutes for public release assets.
 
 ### Update checker
 

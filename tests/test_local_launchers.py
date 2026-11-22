@@ -81,3 +81,36 @@ def test_windows_launcher_runs_coverage_and_static_checks_in_order() -> None:
     assert script.index(test) < script.index(compile_python)
     assert script.index(compile_python) < script.index(lint)
     assert script.index(lint) < script.index(type_check)
+
+
+def test_build_launcher_forwards_version_options() -> None:
+    launcher = (ROOT / "build.cmd").read_text(encoding="utf-8")
+    script = (ROOT / "scripts" / "build.ps1").read_text(encoding="utf-8")
+
+    assert 'scripts\\build.ps1" %*' in launcher
+    assert "[switch]$Major" in script
+    assert "[switch]$Secondary" in script
+    assert "[switch]$Minor" in script
+    assert "[switch]$NoVersionBump" in script
+    assert "versioning.py', 'bump'" in script
+
+
+def test_github_release_bumps_only_when_triggered_manually() -> None:
+    workflow = (ROOT / '.github' / 'workflows' / 'installer.yml').read_text(encoding='utf-8')
+    build = (ROOT / 'scripts' / 'build.ps1').read_text(encoding='utf-8')
+
+    assert 'workflow_dispatch:' in workflow
+    assert '  push:' not in workflow
+    assert 'default: minor' in workflow
+    assert '          - secondary' in workflow
+    assert '          - major' in workflow
+    assert 'scripts/release.py prepare --part $env:BUMP_PART' in workflow
+    assert "if ($NoVersionBump -or (-not ($Major -or $Secondary -or $Minor)))" in build
+
+
+def test_tagged_build_does_not_change_release_version() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "installer.yml").read_text(encoding="utf-8")
+    script = (ROOT / "scripts" / "build.ps1").read_text(encoding="utf-8")
+
+    assert "run: ./scripts/build.ps1 -NoVersionBump" in workflow
+    assert "'--expected-tag', $env:GITHUB_REF_NAME" in script

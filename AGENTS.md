@@ -65,6 +65,7 @@
 - Keep PR titles short and scoped to one purpose.
 
 ## Change logs
+- Keep every release changelog bullet to 100 characters maximum, including its `- ` prefix. Split long details into separate bullets without omitting material facts.
 - Record EVERY feature and bug fix in `docs/changes/YYYY-MM-DD.md` using the date of the change.
 - Each entry includes change, branch, commit scope and corresponding test coverage.
 - Append entries; never overwrite earlier records from the same date.
@@ -74,6 +75,12 @@
 - Record corrections to old changelogs as explicit new entries in the current version; never rewrite history.
 - Never hand-edit generated cumulative history. Release automation and CI must verify every previous version's byte-for-byte integrity against its published commit.
 - All GitHub Releases must contain only the matching version's new features, bugfixes, performance improvements, and documentation changes. Enable immutable GitHub Releases to protect published notes, tags, and assets.
+
+## Build versioning
+- Only the manually triggered `Publish Windows installer` GitHub Actions workflow increases a version automatically. It defaults to the last (`z`) component of `x.y.z`; selecting `secondary` increases `y` and resets `z`, while `major` increases `x` and resets `y.z`. Ordinary CI checks and local builds preserve the existing version. Explicit local `-Minor`, `-Secondary` and `-Major` remain available for deliberate development builds.
+- Bumping must synchronise project metadata, Python application version and installer version before testing and packaging. Treat `pyproject.toml` as authoritative.
+- The manual release action must bump once, freeze only the current release's four changelog sections, run Windows tests and installer smoke checks, then publish its versioned binary to the public distribution repository. The packaging step MUST use `-NoVersionBump`; the build itself must not change the prepared release version. The source tag and generated release-record PR must match the installer. Never auto-merge the record PR.
+- Never modify any published changelog as a side effect of version bumps. Only the current unreleased draft is writable when the changelog implementation is added.
 
 ## Distribution
 - Ship a Windows installer using PyInstaller with Inno Setup.
