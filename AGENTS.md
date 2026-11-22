@@ -82,6 +82,11 @@
 - The manual release action must bump once, freeze only the current release's four changelog sections, run Windows tests and installer smoke checks, then publish its versioned binary to the public source repository's GitHub Releases page using the workflow's built-in `GITHUB_TOKEN`. The packaging step MUST use `-NoVersionBump`; the build itself must not change the prepared release version. The source tag and generated release-record PR must match the installer. Never auto-merge the record PR.
 - Never modify any published changelog as a side effect of version bumps. Only the current unreleased draft is writable when the changelog implementation is added.
 
+## Release notes in the UI
+- Help > What's New must always open the installed version's bundled release notes, including offline and without an open PDF.
+- Closing release notes never disables future access; do not add a permanent dismissal option.
+- Keep release notes tied to the installed version, not the current unreleased draft or newest online release.
+
 ## Distribution
 - Ship a Windows installer using PyInstaller with Inno Setup.
 - Register a stable PDF ProgID with Windows. Offer PDF association; respect the user-controlled default application setting.
