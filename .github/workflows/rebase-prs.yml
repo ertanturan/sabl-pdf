@@ -1,0 +1,27 @@
+name: Rebase open PRs
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+concurrency:
+  group: rebase-open-prs
+  cancel-in-progress: false
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rebase open PR stacks and restart CI
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/rebase_prs.py
