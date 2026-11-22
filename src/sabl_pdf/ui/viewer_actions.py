@@ -1,5 +1,4 @@
 from pathlib import Path
-import fitz
 from PySide6.QtWidgets import QApplication, QFileDialog
 
 
@@ -75,8 +74,8 @@ class ViewerActions:
             QApplication.clipboard().setText(self.viewer.text(self.page_index))
 
     def copy_selection(self) -> None:
-        if self._require_document():
-            def copy(bounds) -> None:
-                page = self.session.document[self.page_index]
-                QApplication.clipboard().setText(page.get_textbox(fitz.Rect(bounds)))
-            self._select_area(copy, tool_name="Copy text")
+        if not self._require_document():
+            return
+        selected = self.canvas.selected_text()
+        if selected:
+            QApplication.clipboard().setText(selected)

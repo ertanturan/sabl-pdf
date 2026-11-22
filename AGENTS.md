@@ -1,8 +1,8 @@
 # Simple PDF Agent Instructions
 
 ## Product
-- Windows-only desktop application built with Python 3.12+, PySide6 and PyMuPDF.
 - All user-facing app, dialog, CLI, installer, release and Windows integration names use `Simple PDF`. Keep stable internal package, settings and PDF ProgID identifiers for compatibility.
+- Windows-only desktop application built with Python 3.12+, PySide6 and PyMuPDF.
 - Offline-first, no login, subscriptions, advertisements, telemetry or online services.
 - One-purpose workflows and a simple, accessible interface.
 - An installer registers the app as a PDF handler. Windows controls the user's default PDF app selection; never bypass the default-app consent mechanism.
@@ -86,7 +86,15 @@
 ## Release notes in the UI
 - Help > What's New must always open the installed version's bundled release notes, including offline and without an open PDF.
 - Closing release notes never disables future access; do not add a permanent dismissal option.
+- Show release notes once after an installed-version change. Keep the Help action available on every launch.
 - Keep release notes tied to the installed version, not the current unreleased draft or newest online release.
+
+## Updates
+- On application startup, check public GitHub Releases asynchronously, at most once per 24 hours after successful checks.
+- Show a persistent, clickable update indicator for a newer stable version, including offline from a safe cache.
+- Help > Check for Updates must bypass the cache and remain available when automatic checks are disabled.
+- Provide an automatic-check setting. Never suppress Help > What's New or permit unchecked update installers to run.
+- Never upload documents, collect analytics, or block PDF editing because a network check fails.
 
 ## Distribution
 - Ship a Windows installer using PyInstaller with Inno Setup.

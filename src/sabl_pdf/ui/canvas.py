@@ -11,6 +11,9 @@ class PdfCanvas(QGraphicsView):
     selection_cancelled = Signal()
     item_move_requested = Signal(int, int, int, tuple)
     item_delete_requested = Signal(int, int)
+    copy_text_requested = Signal()
+    redact_text_requested = Signal()
+    redact_area_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -20,6 +23,10 @@ class PdfCanvas(QGraphicsView):
         self._page_rects: list[QRectF] = []
         self._page_items: dict[int, object] = {}
         self._render_page: Callable | None = None
+        self._text_selector: Callable | None = None
+        self._text_selection = None
+        self._text_drag_origin = None
+        self._text_highlights: list = []
         self._selection_enabled = False
         self._click_size: tuple[float, float] | None = None
         self._origin = None
@@ -51,6 +58,9 @@ class PdfCanvas(QGraphicsView):
         self._zoom = zoom
         self._render_page = render_page
         self._scene.clear()
+        self._text_selection = None
+        self._text_drag_origin = None
+        self._text_highlights = []
         self._preview_item = None
         self._search_highlight = None
         self._item_outline = None
@@ -136,6 +146,8 @@ class PdfCanvas(QGraphicsView):
         preview_image: str | None = None,
     ) -> None:
         self._remove_preview()
+        if enabled:
+            self.clear_text_selection()
         self._selection_enabled = enabled
         self._click_size = click_size if enabled else None
         self._origin = None
@@ -222,6 +234,47 @@ class PdfCanvas(QGraphicsView):
         if self._preview_item is not None:
             self._preview_item.hide()
         super().leaveEvent(event)
+
+    def set_text_selector(self, selector: Callable | None) -> None:
+        self._text_selector = selector
+
+    def selected_text(self) -> str:
+        return self._text_selection.text if self._text_selection is not None else ""
+
+    def selected_text_regions(self):
+        return self._text_selection
+
+    def clear_text_selection(self) -> None:
+        for item in self._text_highlights:
+            self._scene.removeItem(item)
+        self._text_highlights = []
+        self._text_selection = None
+
+    def _update_text_selection(self, scene_position) -> None:
+        if self._text_drag_origin is None or self._text_selector is None:
+            return
+        page, start = self._text_drag_origin
+        bounds = self._page_rects[page]
+        end_x = max(bounds.left(), min(scene_position.x(), bounds.right()))
+        end_y = max(bounds.top(), min(scene_position.y(), bounds.bottom()))
+        origin = ((start.x() - bounds.left()) / self._zoom,
+                  (start.y() - bounds.top()) / self._zoom)
+        destination = ((end_x - bounds.left()) / self._zoom,
+                       (end_y - bounds.top()) / self._zoom)
+        selection = self._text_selector(page, origin, destination)
+        self.clear_text_selection()
+        if selection is None:
+            return
+        self._text_selection = selection
+        for x0, y0, x1, y1 in selection.display_rects:
+            item = self._scene.addRect(
+                QRectF(bounds.left() + x0 * self._zoom,
+                       bounds.top() + y0 * self._zoom,
+                       (x1 - x0) * self._zoom, (y1 - y0) * self._zoom),
+                QPen(Qt.PenStyle.NoPen), QBrush(QColor(39, 117, 204, 95)),
+            )
+            item.setZValue(15)
+            self._text_highlights.append(item)
 
     def clear_search_highlight(self) -> None:
         if self._search_highlight is not None:
@@ -366,6 +419,10 @@ class PdfCanvas(QGraphicsView):
             self.delete_selected_item()
             event.accept()
             return
+        if event.key() == Qt.Key.Key_Escape and self._text_selection is not None:
+            self.clear_text_selection()
+            event.accept()
+            return
         if event.key() == Qt.Key.Key_Escape and self._selected_item is not None:
             self.clear_item_selection()
             event.accept()
@@ -381,8 +438,16 @@ class PdfCanvas(QGraphicsView):
             event.accept()
             return
         item = self._item_at(self.mapToScene(event.pos()))
+        if item is None and self._text_selection is not None:
+            menu = QMenu(self)
+            menu.addAction("Copy selected text", self.copy_text_requested.emit)
+            menu.addAction("Redact selection", self.redact_text_requested.emit)
+            menu.exec(event.globalPos())
+            return
         if item is None:
-            super().contextMenuEvent(event)
+            menu = QMenu(self)
+            menu.addAction("Redact an area", self.redact_area_requested.emit)
+            menu.exec(event.globalPos())
             return
         self._select_item(item)
         menu = QMenu(self)
@@ -410,15 +475,25 @@ class PdfCanvas(QGraphicsView):
             position = self.mapToScene(event.position().toPoint())
             item = self._item_at(position)
             self._select_item(item)
+            self.clear_text_selection()
             if item is not None:
                 self._drag_origin = position
                 self._drag_rect = QRectF(item[2])
                 self._drag_target_page = item[0]
                 event.accept()
                 return
+            page = self._page_at(position)
+            if page is not None and self._text_selector is not None:
+                self._text_drag_origin = (page, position)
+                event.accept()
+                return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
+        if self._text_drag_origin is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            self._update_text_selection(self.mapToScene(event.position().toPoint()))
+            event.accept()
+            return
         if self._drag_origin is not None and event.buttons() & Qt.MouseButton.LeftButton:
             self._track_drag_pointer(event.position().toPoint())
             self._drag_item(self.mapToScene(event.position().toPoint()))
@@ -445,6 +520,11 @@ class PdfCanvas(QGraphicsView):
         self.selection_cancelled.emit()
 
     def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self._text_drag_origin is not None:
+            self._update_text_selection(self.mapToScene(event.position().toPoint()))
+            self._text_drag_origin = None
+            event.accept()
+            return
         if event.button() == Qt.MouseButton.LeftButton and self._drag_origin is not None:
             position = self.mapToScene(event.position().toPoint())
             self._drag_item(position)
