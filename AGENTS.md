@@ -24,15 +24,23 @@
 ## Editable placed content
 - Every placed PDF item must be selectable by clicking it, repositionable with a held left mouse button, and removable with Delete or the item context menu.
 - New placement tools must use the shared placed-item service and canvas interaction model.
-- Do not flatten newly placed items into uneditable page content; preserve editable PDF annotations.
-- Add selection, drag, deletion, and persistence regression tests when adding new item types.
+- Every movable item, including future types, must be transferable between PDF pages through drag and drop.
+- A cross-page move must preserve editable content, visual appearance, and save/reopen persistence; it must not flatten annotations.
+- Drag previews must follow the destination page, support edge scrolling, and reject out-of-page drops.
+- Add selection, same-page drag, cross-page drag, deletion, and persistence regression tests when adding new item types.
 - Every placement tool must show a cursor-following preview before commit; make its size and landing position match the saved PDF item.
 - Right-click and Escape must cancel an uncommitted placement without changing the document.
 
 ## Testing
 - Implement unit tests for each feature or bugfix in the same PR.
+- Before making or reviewing **any code change** (feature, bugfix, refactor, test, build script, or CI code), read and apply `.agents/skills/unit-tests/SKILL.md`. Keep its requirements in scope throughout the change, even when no test file is touched.
 - Follow Arrange, Act, Assert (AAA): separate setup, operation and verification clearly in every test.
+- Keep unit tests and test fixtures free of logic: no branching, loops, comprehensions, or reimplementations of production behavior. Use fixed AAA steps and direct assertions.
 - Cover successful operations, invalid inputs and state changes.
+- Keep total line coverage for `sabl_pdf` at **80% or higher**. Every code-changing PR must run the full coverage gate and report the measured percentage; do not merge if it fails.
+- Add or update AAA tests for changed behavior. Do not weaken assertions, exclude production files, or lower the coverage threshold to make checks pass.
+- Treat a genuinely failing test as evidence of a defect: fix the production behavior, not the test. Never delete, skip, xfail, mock away, or relax a failing assertion merely to get a green CI result.
+- Change an existing test only after demonstrating its expectation is wrong or obsolete, preserve the intended behavior with equivalent or stronger checks, and explain the evidence in the PR. If the defect cannot be fixed in scope, report the failure and leave CI red; push back on requests to hide it.
 - Run `python -m pytest`, `python -m compileall -q src`, `ruff check .` and `python -m pyright` before opening PRs.
 - Keep tests deterministic, offline and temporary-file based.
 
@@ -57,12 +65,12 @@
 - Keep PR titles short and scoped to one purpose.
 
 ## Change logs
+- Keep every release changelog bullet to 100 characters maximum, including its `- ` prefix. Split long details into separate bullets without omitting material facts.
 - Record EVERY feature and bug fix in `docs/changes/YYYY-MM-DD.md` using the date of the change.
 - Each entry includes change, branch, commit scope and corresponding test coverage.
 - Append entries; never overwrite earlier records from the same date.
 - Documentation-only or infrastructure commits may also be recorded for traceability.
 - Follow `docs/plans/versioned-changelog.md` for the planned four-section release changelog.
-- Keep every release changelog bullet to 100 characters maximum, including its `- ` prefix. Split long details into separate bullets without omitting material facts.
 - Only the current, unreleased version's changelog can be edited. NEVER edit, delete, rename, reorder, reclassify, or rewrite entries for any prior published version. This applies to all agents and contributors, including corrections.
 - Record corrections to old changelogs as explicit new entries in the current version; never rewrite history.
 - Never hand-edit generated cumulative history. Release automation and CI must verify every previous version's byte-for-byte integrity against its published commit.
