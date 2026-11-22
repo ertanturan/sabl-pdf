@@ -70,7 +70,7 @@ def check_version(root: Path, expected_tag: str | None = None) -> str:
 
 
 def main(args: list[str] | None = None, root: Path = ROOT) -> int:
-    parser = argparse.ArgumentParser(description="Manage the SABL PDF build version")
+    parser = argparse.ArgumentParser(description="Manage the Simple PDF build version")
     commands = parser.add_subparsers(dest="action", required=True)
     bump = commands.add_parser("bump")
     bump.add_argument("--part", choices=("minor", "secondary", "major"), default="minor")

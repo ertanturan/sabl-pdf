@@ -6,6 +6,7 @@ from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget
 
 from sabl_pdf import __version__
+from sabl_pdf.branding import DISPLAY_NAME
 from sabl_pdf.services.release_notes import installed_release_notes
 from sabl_pdf.ui.whats_new_dialog import WhatsNewDialog
 from sabl_pdf.ui.default_apps import open_default_apps_settings
@@ -61,7 +62,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._selection_action: Callable[[tuple], None] | None = None
         self._active_tool: str | None = None
         self._document_actions: list[QAction] = []
-        self.setWindowTitle("SABL PDF")
+        self.setWindowTitle(DISPLAY_NAME)
         self.resize(1024, 780)
         self._empty_canvas = PdfCanvas()
         self.canvas = self._empty_canvas
@@ -160,14 +161,14 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     def open_default_pdf_settings(self) -> None:
         if open_default_apps_settings():
             self.statusBar().showMessage(
-                "In Windows Default apps, select SABL PDF for .pdf files.", 12000
+                f"In Windows Default apps, select {DISPLAY_NAME} for .pdf files.", 12000
             )
             return
         QMessageBox.warning(
             self,
             "Default PDF app",
-            "Could not open Windows Default apps. Install SABL PDF, then open "
-            "Settings > Apps > Default apps and select SABL PDF for .pdf files.",
+            f"Could not open Windows Default apps. Install {DISPLAY_NAME}, then open "
+            f"Settings > Apps > Default apps and select {DISPLAY_NAME} for .pdf files.",
         )
 
     def show_whats_new(self) -> None:
@@ -256,7 +257,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._first_thumbnails = True
         self.workspace.setCurrentWidget(self.welcome)
         self.status.setText("Open a PDF to begin")
-        self.setWindowTitle("SABL PDF")
+        self.setWindowTitle(DISPLAY_NAME)
 
     def _update_tab_title(self) -> None:
         tab = self._active_tab
@@ -265,7 +266,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         index = self.document_tabs.indexOf(tab)
         if index >= 0:
             self.document_tabs.setTabText(index, tab.title())
-        self.setWindowTitle(f"SABL PDF | {tab.title()}")
+        self.setWindowTitle(f"{DISPLAY_NAME} | {tab.title()}")
 
     def _open_document(self, path: str | Path) -> None:
         requested = Path(path)
@@ -496,7 +497,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         try:
             operation()
         except Exception as exc:
-            QMessageBox.warning(self, "SABL PDF", str(exc))
+            QMessageBox.warning(self, DISPLAY_NAME, str(exc))
 
 
     def _refresh(self) -> None:

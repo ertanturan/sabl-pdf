@@ -3,6 +3,8 @@ from pathlib import Path
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
+from sabl_pdf.branding import DISPLAY_NAME
+
 
 class WelcomePage(QWidget):
     open_requested = Signal()
@@ -16,7 +18,7 @@ class WelcomePage(QWidget):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.setSpacing(14)
-        heading = QLabel("Open a PDF to get started", self)
+        heading = QLabel(DISPLAY_NAME, self)
         heading.setAlignment(Qt.AlignmentFlag.AlignCenter)
         heading.setStyleSheet("font-size: 24px; font-weight: 600;")
         instruction = QLabel("Open a file or drag a PDF onto this window", self)
@@ -34,7 +36,7 @@ class WelcomePage(QWidget):
         default_button.setObjectName("welcome_default_pdf")
         default_button.setMinimumWidth(180)
         default_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        default_button.setToolTip("Choose SABL PDF for .pdf files in Windows Settings")
+        default_button.setToolTip(f"Choose {DISPLAY_NAME} for .pdf files in Windows Settings")
         default_button.clicked.connect(lambda _checked=False: self.default_app_requested.emit())
         layout.addWidget(default_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
