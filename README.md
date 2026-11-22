@@ -14,7 +14,7 @@ It runs offline and requires no account or subscription. It does not include adv
 
 ## Features
 
-- **Viewing:** Open PDFs in separate tabs, search existing text, zoom, use page thumbnails and copy text.
+- **Viewing:** Open PDFs in separate tabs, search existing text, zoom, use page thumbnails and select or copy text.
 - **Text and forms:** Add, edit, move or remove text-box annotations; fill PDF text and checkbox fields.
 - **Signatures:** Draw and reuse a signature, or place a PNG/JPEG signature image.
 - **Pages:** Merge PDFs, split page ranges, delete, rotate or reorder pages.
