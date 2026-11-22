@@ -28,7 +28,7 @@
 - Implement unit tests for each feature or bugfix in the same PR.
 - Follow Arrange, Act, Assert (AAA): separate setup, operation and verification clearly in every test.
 - Cover successful operations, invalid inputs and state changes.
-- Run `python -m pytest`, `python -m compileall -q src` and `ruff check .` before opening PRs.
+- Run `python -m pytest`, `python -m compileall -q src`, `ruff check .` and `python -m pyright` before opening PRs.
 - Keep tests deterministic, offline and temporary-file based.
 
 ## Branches and commits

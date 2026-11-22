@@ -20,6 +20,7 @@ try {
     Invoke-Check -Arguments @('-m', 'pytest', '-q')
     Invoke-Check -Arguments @('-m', 'compileall', '-q', 'src')
     Invoke-Check -Arguments @('-m', 'ruff', 'check', '.')
+    Invoke-Check -Arguments @('-m', 'pyright')
 } finally {
     [Environment]::SetEnvironmentVariable('QT_QPA_PLATFORM', $previousPlatform, 'Process')
     Pop-Location
