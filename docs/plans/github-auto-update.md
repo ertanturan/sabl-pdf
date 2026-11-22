@@ -95,4 +95,4 @@ Do not enable one-click installation until signature and recovery tests pass. Ea
 - [GitHub immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
 - [GitHub releases API](https://docs.github.com/en/rest/releases/releases)
 
-The release workflow is manually triggered and publishes installers in the existing public source repository. This plan does not implement or enable the in-app updater.
+The release workflow is manually triggered and publishes installers in the existing public source repository. The application can identify and display newer releases, but it cannot automatically download or install them yet. That requires the planned signed-manifest verification and installer handoff.
