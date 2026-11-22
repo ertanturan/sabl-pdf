@@ -13,6 +13,7 @@ class PdfCanvas(QGraphicsView):
     item_delete_requested = Signal(int, int)
     copy_text_requested = Signal()
     redact_text_requested = Signal()
+    redact_area_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -393,10 +394,13 @@ class PdfCanvas(QGraphicsView):
         if item is None and self._text_selection is not None:
             menu = QMenu(self)
             menu.addAction("Copy selected text", self.copy_text_requested.emit)
+            menu.addAction("Redact selection", self.redact_text_requested.emit)
             menu.exec(event.globalPos())
             return
         if item is None:
-            super().contextMenuEvent(event)
+            menu = QMenu(self)
+            menu.addAction("Redact an area", self.redact_area_requested.emit)
+            menu.exec(event.globalPos())
             return
         self._select_item(item)
         menu = QMenu(self)
