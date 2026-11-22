@@ -59,7 +59,7 @@ class RedactionActions:
         try:
             matches = self._host.redaction.find(phrase)
         except Exception as exc:
-            QMessageBox.warning(self, "Redaction unavailable", str(exc))
+            QMessageBox.warning(self._host, "Redaction unavailable", str(exc))
             return
         if not matches:
             QMessageBox.information(
@@ -77,7 +77,7 @@ class RedactionActions:
             return
         selection = self._host.canvas.selected_text_regions()
         if selection is None:
-            QMessageBox.information(self, "Redact selection", "Select text in the PDF first.")
+            QMessageBox.information(self._host, "Redact selection", "Select text in the PDF first.")
             return
         targets = [
             RedactionTarget(selection.page, bounds, selection.text)
@@ -96,7 +96,7 @@ class RedactionActions:
 
     def _confirm_redaction(self, targets: list[RedactionTarget]) -> None:
         if not targets:
-            QMessageBox.information(self, "Redact information", "No areas were selected.")
+            QMessageBox.information(self._host, "Redact information", "No areas were selected.")
             return
         answer = QMessageBox.warning(
             self._host, "Permanent redaction",
@@ -123,7 +123,7 @@ class RedactionActions:
         try:
             report = self._host.redaction.export(targets, Path(filename))
         except Exception as exc:
-            QMessageBox.critical(self, "Redaction failed", str(exc))
+            QMessageBox.critical(self._host, "Redaction failed", str(exc))
             return
         self._host.canvas.clear_text_selection()
         self._host.canvas.clear_search_highlight()
