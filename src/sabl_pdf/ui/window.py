@@ -1,14 +1,15 @@
 from collections.abc import Callable
 from pathlib import Path
+import time
 
 from PySide6.QtCore import QSettings, QSize, Qt, QTimer, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget, QPushButton
 
 from sabl_pdf import __version__
 from sabl_pdf.services.release_notes import installed_release_notes
-from sabl_pdf.services.updates import AvailableUpdate, parse_latest_release
+from sabl_pdf.services.updates import AvailableUpdate, automatic_check_due, parse_latest_release
 from sabl_pdf.ui.update_available_dialog import UpdateAvailableDialog
 from sabl_pdf.ui.whats_new_dialog import WhatsNewDialog
 from sabl_pdf.core.session import DocumentSession
@@ -46,6 +47,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._ui_settings = settings or QSettings("SABL", "SABL PDF")
         self._update_manager = QNetworkAccessManager(self)
         self._pending_update_reply: QNetworkReply | None = None
+        self._manual_update_check = False
+        self._available_update: AvailableUpdate | None = None
         self._initial_session = session
         self._active_tab: DocumentTab | None = None
         self._empty_session = session or DocumentSession()
@@ -98,12 +101,18 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.search_bar.close_requested.connect(self._close_search)
         self.status = QLabel("Open a PDF to begin")
         self.statusBar().addPermanentWidget(self.status)
+        self.update_notice = QPushButton(self)
+        self.update_notice.setObjectName("update_available_button")
+        self.update_notice.clicked.connect(self.show_available_update)
+        self.statusBar().addPermanentWidget(self.update_notice)
+        self.update_notice.hide()
         self._build_menu()
         self._build_toolbar()
         self._build_thumbnails()
         self._build_toolbar_preferences()
         self._build_cancel_shortcut()
         self._set_document_actions_enabled(False)
+        self._restore_cached_update()
         self._announce_release_after_upgrade()
 
     def _announce_release_after_upgrade(self) -> None:
@@ -164,11 +173,32 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.whats_new_action.triggered.connect(self.show_whats_new)
         self.check_updates_action = help_menu.addAction("Check for Updates")
         self.check_updates_action.triggered.connect(self.check_for_updates)
+        self.auto_updates_action = help_menu.addAction("Automatically Check for Updates")
+        self.auto_updates_action.setCheckable(True)
+        self.auto_updates_action.setChecked(
+            self._ui_settings.value("updates/automatic", True, type=bool)
+        )
+        self.auto_updates_action.toggled.connect(self._set_automatic_update_checks)
 
     def show_whats_new(self) -> None:
         WhatsNewDialog(__version__, installed_release_notes(), self).exec()
 
+    def _set_automatic_update_checks(self, enabled: bool) -> None:
+        self._ui_settings.setValue("updates/automatic", enabled)
+        if enabled:
+            self.check_for_updates_automatically()
+
     def check_for_updates(self) -> None:
+        self._request_update_check(manual=True)
+
+    def check_for_updates_automatically(self) -> None:
+        if not self.auto_updates_action.isChecked():
+            return
+        last = self._ui_settings.value("updates/last_successful_check", 0.0, type=float)
+        if automatic_check_due(last, time.time()):
+            self._request_update_check(manual=False)
+
+    def _request_update_check(self, manual: bool) -> None:
         if self._pending_update_reply is not None:
             return
         request = QNetworkRequest(
@@ -179,30 +209,62 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         request.setTransferTimeout(10000)
         reply = self._update_manager.get(request)
         self._pending_update_reply = reply
+        self._manual_update_check = manual
         self.check_updates_action.setEnabled(False)
         reply.finished.connect(lambda: self._finish_update_check(reply))
 
     def _finish_update_check(self, reply: QNetworkReply) -> None:
+        manual = self._manual_update_check
         self._pending_update_reply = None
         self.check_updates_action.setEnabled(True)
         if reply.error() != QNetworkReply.NetworkError.NoError:
-            QMessageBox.warning(self, "Update check failed", reply.errorString())
+            if manual:
+                QMessageBox.warning(self, "Update check failed", reply.errorString())
             reply.deleteLater()
             return
+        payload = bytes(reply.readAll())
         try:
-            update = parse_latest_release(bytes(reply.readAll()), __version__)
+            update = parse_latest_release(payload, __version__)
         except ValueError as error:
-            QMessageBox.warning(self, "Update check failed", str(error))
+            if manual:
+                QMessageBox.warning(self, "Update check failed", str(error))
             reply.deleteLater()
             return
         reply.deleteLater()
-        self._show_update_result(update)
+        self._ui_settings.setValue("updates/latest_release_json", payload.decode("utf-8"))
+        self._ui_settings.setValue("updates/last_successful_check", time.time())
+        self._set_available_update(update)
+        if manual:
+            self._show_update_result(update)
+
+    def _restore_cached_update(self) -> None:
+        cached = self._ui_settings.value("updates/latest_release_json", "", type=str)
+        if not cached:
+            return
+        try:
+            update = parse_latest_release(cached.encode("utf-8"), __version__)
+        except ValueError:
+            return
+        self._set_available_update(update)
+
+    def _set_available_update(self, update: AvailableUpdate | None) -> None:
+        self._available_update = update
+        if update is None:
+            self.update_notice.hide()
+            return
+        self.update_notice.setText(f"Update available: v{update.version}")
+        self.update_notice.setToolTip("View the newer release and its changes")
+        self.update_notice.show()
+
+    def show_available_update(self) -> None:
+        if self._available_update is not None:
+            UpdateAvailableDialog(__version__, self._available_update, self).exec()
 
     def _show_update_result(self, update: AvailableUpdate | None) -> None:
         if update is None:
             QMessageBox.information(self, "Up to date", f"SABL PDF v{__version__} is up to date.")
             return
-        UpdateAvailableDialog(__version__, update, self).exec()
+        self.show_available_update()
 
     def _connect_tab(self, tab: DocumentTab) -> None:
         tab.canvas.area_selected.connect(
