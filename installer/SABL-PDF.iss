@@ -5,6 +5,7 @@
 AppId={{B0B635E2-0CB9-4FA1-BF4C-7BF92A2F1D94}
 AppName={#AppName}
 AppVersion={#AppVersion}
+ChangesAssociations=yes
 DefaultDirName={autopf}\SABL PDF
 DefaultGroupName=SABL PDF
 OutputDir=..\dist\installer
@@ -31,6 +32,7 @@ Root: HKCU; Subkey: "Software\Classes\SABL.PDF"; ValueType: string; ValueData: "
 Root: HKCU; Subkey: "Software\Classes\SABL.PDF\DefaultIcon"; ValueType: string; ValueData: "{app}\SABL PDF.exe,0"
 Root: HKCU; Subkey: "Software\Classes\SABL.PDF\shell\open\command"; ValueType: string; ValueData: """{app}\SABL PDF.exe"" ""%1"""
 Root: HKCU; Subkey: "Software\Classes\.pdf\OpenWithProgids"; ValueType: string; ValueName: "SABL.PDF"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCU; Subkey: "Software\Classes\Applications\SABL PDF.exe\SupportedTypes"; ValueType: string; ValueName: ".pdf"; ValueData: ""; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\SABL PDF\Capabilities"; ValueType: string; ValueName: "ApplicationName"; ValueData: "SABL PDF"; Flags: uninsdeletekey
 Root: HKCU; Subkey: "Software\SABL PDF\Capabilities"; ValueType: string; ValueName: "ApplicationDescription"; ValueData: "Simple offline PDF viewer"
 Root: HKCU; Subkey: "Software\SABL PDF\Capabilities\FileAssociations"; ValueType: string; ValueName: ".pdf"; ValueData: "SABL.PDF"
