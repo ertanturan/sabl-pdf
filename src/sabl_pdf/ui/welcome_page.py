@@ -38,6 +38,7 @@ class WelcomePage(QWidget):
         default_button.clicked.connect(lambda _checked=False: self.default_app_requested.emit())
         layout.addWidget(default_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
+
     def _pdf_path(self, event) -> str | None:
         if not event.mimeData().hasUrls():
             return None

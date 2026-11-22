@@ -2,6 +2,7 @@ import os
 import sys
 from pathlib import Path
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 from sabl_pdf.ui.window import MainWindow
@@ -18,6 +19,7 @@ def main() -> int:
     if len(sys.argv) > 1:
         window.open_path(Path(sys.argv[1]))
     window.show()
+    QTimer.singleShot(0, window.check_for_updates_automatically)
     return application.exec()
 
 

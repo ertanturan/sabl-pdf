@@ -1,12 +1,16 @@
 from collections.abc import Callable
 from pathlib import Path
+import time
 
-from PySide6.QtCore import QSettings, QSize, Qt
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer, QUrl
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget, QPushButton
 
 from sabl_pdf import __version__
 from sabl_pdf.services.release_notes import installed_release_notes
+from sabl_pdf.services.updates import AvailableUpdate, automatic_check_due, parse_latest_release
+from sabl_pdf.ui.update_available_dialog import UpdateAvailableDialog
 from sabl_pdf.ui.whats_new_dialog import WhatsNewDialog
 from sabl_pdf.ui.default_apps import open_default_apps_settings
 from sabl_pdf.core.session import DocumentSession
@@ -33,15 +37,21 @@ from sabl_pdf.services.conversion import ConversionService
 from sabl_pdf.ui.conversion_actions import ConversionActions
 from sabl_pdf.services.ocr import OcrService
 from sabl_pdf.ui.ocr_actions import OcrActions
+from sabl_pdf.services.redaction import RedactionService
+from sabl_pdf.ui.redaction_actions import RedactionActions
 
 
-class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, OcrActions, QMainWindow):
+class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, OcrActions, RedactionActions, QMainWindow):
 
     def __init__(
         self, session: DocumentSession | None = None, settings: QSettings | None = None
     ) -> None:
         super().__init__()
         self._ui_settings = settings or QSettings("SABL", "SABL PDF")
+        self._update_manager = QNetworkAccessManager(self)
+        self._pending_update_reply: QNetworkReply | None = None
+        self._manual_update_check = False
+        self._available_update: AvailableUpdate | None = None
         self._initial_session = session
         self._active_tab: DocumentTab | None = None
         self._empty_session = session or DocumentSession()
@@ -56,6 +66,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.compression = CompressionService(self.session)
         self.conversion = ConversionService(self.session)
         self.ocr = OcrService(self.session)
+        self.redaction = RedactionService(self.session)
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
@@ -95,13 +106,25 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.search_bar.close_requested.connect(self._close_search)
         self.status = QLabel("Open a PDF to begin")
         self.statusBar().addPermanentWidget(self.status)
+        self.update_notice = QPushButton(self)
+        self.update_notice.setObjectName("update_available_button")
+        self.update_notice.clicked.connect(self.show_available_update)
+        self.statusBar().addPermanentWidget(self.update_notice)
+        self.update_notice.hide()
         self._build_menu()
         self._build_toolbar()
         self._build_thumbnails()
         self._build_toolbar_preferences()
         self._build_cancel_shortcut()
         self._set_document_actions_enabled(False)
+        self._restore_cached_update()
+        self._announce_release_after_upgrade()
 
+    def _announce_release_after_upgrade(self) -> None:
+        previous = self._ui_settings.value("releases/last_launched_version", "", type=str)
+        self._ui_settings.setValue("releases/last_launched_version", __version__)
+        if previous and previous != __version__:
+            QTimer.singleShot(0, self.show_whats_new)
 
     def _action(self, menu, text: str, handler, shortcut: str | None = None) -> QAction:
         action = QAction(text, self)
@@ -120,8 +143,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(file_menu, "Close tab", self._close_current_tab, "Ctrl+W")
         self._action(file_menu, "Save", self.save_pdf, "Ctrl+S")
         self._action(file_menu, "Save as", self.save_as)
-        self._action(file_menu, "Copy page text", self.copy_page_text, "Ctrl+C")
-        self._action(file_menu, "Copy selected text", self.copy_selection)
+        self._action(file_menu, "Copy page text", self.copy_page_text)
+        self._action(file_menu, "Copy selected text", self.copy_selection, "Ctrl+C")
         file_menu.addSeparator()
         self.default_pdf_action = file_menu.addAction("Set as default PDF app")
         self.default_pdf_action.triggered.connect(self.open_default_pdf_settings)
@@ -153,9 +176,20 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(tools, "Export pages as images", self.export_images)
         self._action(tools, "OCR current page", self.ocr_page)
         self._action(tools, "Export OCR text", self.export_ocr)
+        self._action(tools, "Redact information", self.redact_information)
+        self._action(tools, "Redact an area", self.redact_area)
         help_menu = self.menuBar().addMenu("Help")
         self.whats_new_action = help_menu.addAction("What's New")
         self.whats_new_action.triggered.connect(self.show_whats_new)
+        self.check_updates_action = help_menu.addAction("Check for Updates")
+        self.check_updates_action.triggered.connect(self.check_for_updates)
+        self.auto_updates_action = help_menu.addAction("Automatically Check for Updates")
+        self.auto_updates_action.setCheckable(True)
+        self.auto_updates_action.setChecked(
+            self._ui_settings.value("updates/automatic", True, type=bool)
+        )
+        self.auto_updates_action.toggled.connect(self._set_automatic_update_checks)
+
 
     def open_default_pdf_settings(self) -> None:
         if open_default_apps_settings():
@@ -173,7 +207,99 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     def show_whats_new(self) -> None:
         WhatsNewDialog(__version__, installed_release_notes(), self).exec()
 
+    def _set_automatic_update_checks(self, enabled: bool) -> None:
+        self._ui_settings.setValue("updates/automatic", enabled)
+        if enabled:
+            self.check_for_updates_automatically()
+
+    def check_for_updates(self) -> None:
+        self._request_update_check(manual=True)
+
+    def check_for_updates_automatically(self) -> None:
+        if not self.auto_updates_action.isChecked():
+            return
+        last = self._ui_settings.value("updates/last_successful_check", 0.0, type=float)
+        if automatic_check_due(last, time.time()):
+            self._request_update_check(manual=False)
+
+    def _request_update_check(self, manual: bool) -> None:
+        if self._pending_update_reply is not None:
+            return
+        request = QNetworkRequest(
+            QUrl("https://api.github.com/repos/ertanturan/sabl-pdf/releases/latest")
+        )
+        request.setRawHeader(b"User-Agent", b"SABL-PDF")
+        request.setRawHeader(b"Accept", b"application/vnd.github+json")
+        request.setTransferTimeout(10000)
+        reply = self._update_manager.get(request)
+        self._pending_update_reply = reply
+        self._manual_update_check = manual
+        self.check_updates_action.setEnabled(False)
+        reply.finished.connect(lambda: self._finish_update_check(reply))
+
+    def _finish_update_check(self, reply: QNetworkReply) -> None:
+        manual = self._manual_update_check
+        self._pending_update_reply = None
+        self.check_updates_action.setEnabled(True)
+        if reply.error() != QNetworkReply.NetworkError.NoError:
+            if manual:
+                QMessageBox.warning(self, "Update check failed", reply.errorString())
+            reply.deleteLater()
+            return
+        payload = bytes(reply.readAll())
+        try:
+            update = parse_latest_release(payload, __version__)
+        except ValueError as error:
+            if manual:
+                QMessageBox.warning(self, "Update check failed", str(error))
+            reply.deleteLater()
+            return
+        reply.deleteLater()
+        self._ui_settings.setValue("updates/latest_release_json", payload.decode("utf-8"))
+        self._ui_settings.setValue("updates/last_successful_check", time.time())
+        self._set_available_update(update)
+        if manual:
+            self._show_update_result(update)
+
+    def _restore_cached_update(self) -> None:
+        cached = self._ui_settings.value("updates/latest_release_json", "", type=str)
+        if not cached:
+            return
+        try:
+            update = parse_latest_release(cached.encode("utf-8"), __version__)
+        except ValueError:
+            return
+        self._set_available_update(update)
+
+    def _set_available_update(self, update: AvailableUpdate | None) -> None:
+        self._available_update = update
+        if update is None:
+            self.update_notice.hide()
+            return
+        self.update_notice.setText(f"Update available: v{update.version}")
+        self.update_notice.setToolTip("View the newer release and its changes")
+        self.update_notice.show()
+
+    def show_available_update(self) -> None:
+        if self._available_update is not None:
+            UpdateAvailableDialog(__version__, self._available_update, self).exec()
+
+    def _show_update_result(self, update: AvailableUpdate | None) -> None:
+        if update is None:
+            QMessageBox.information(self, "Up to date", f"SABL PDF v{__version__} is up to date.")
+            return
+        self.show_available_update()
+
     def _connect_tab(self, tab: DocumentTab) -> None:
+        tab.canvas.redact_text_requested.connect(
+            lambda: self._from_tab(tab, self.redact_selected_text)
+        )
+        tab.canvas.redact_area_requested.connect(
+            lambda: self._from_tab(tab, self.redact_area)
+        )
+        tab.canvas.copy_text_requested.connect(
+            lambda: self._from_tab(tab, self.copy_selection)
+        )
         tab.canvas.area_selected.connect(
             lambda page, bounds: self._from_tab(tab, self._on_area_selected, page, bounds)
         )
@@ -221,7 +347,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     def _restore_document(self, tab: DocumentTab) -> None:
         for name in (
             "session", "viewer", "text_boxes", "placed_items", "forms", "signatures", "pages",
-            "annotations", "compression", "conversion", "ocr", "canvas",
+            "annotations", "compression", "conversion", "ocr", "redaction", "canvas",
         ):
             setattr(self, name, getattr(tab, name))
         self.page_index = tab.page_index
@@ -481,6 +607,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self._close_search()
         else:
             self.canvas.clear_item_selection()
+            self.canvas.clear_text_selection()
 
 
     def _require_document(self) -> bool:
@@ -514,6 +641,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             lambda index: self.viewer.render(index, self.zoom),
             self.zoom,
         )
+        self.canvas.set_text_selector(self.viewer.select_text)
         self.canvas.set_placed_items([
             (item.page, item.xref, item.bounds) for item in self.placed_items.list()
         ])

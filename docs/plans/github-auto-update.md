@@ -1,6 +1,6 @@
 # GitHub Releases auto-update plan
 
-Status: Manual GitHub Actions releases target the public `ertanturan/sabl-pdf` repository. The source workflow uses the built-in `GITHUB_TOKEN` and requires appropriate Actions permissions. Signed update manifests, in-app update detection, and one-click installation remain planned.
+Status: Manual GitHub Actions releases target the public `ertanturan/sabl-pdf` repository. Offline What's New and manual/automatic release detection are implemented in separate stacked PRs. Signed update manifests, verified one-click installation and installer relaunch remain planned.
 
 ## Current state
 
@@ -11,7 +11,7 @@ SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds a
 ## Desired experience
 
 - Automatically check for a newer stable release on launch, without blocking document opening, and no more than once every 24 hours thereafter.
-- Keep `Help > What's New` always available with offline notes for the installed version, including after updates. Add `Help > Check for updates` for an immediate manual check and a setting to disable automatic checks.
+- Keep `Help > What's New` always available with offline notes for the installed version, including after updates. On launch after a recorded version change, show those notes once, without a permanent opt-out. Add `Help > Check for updates` for an immediate manual check and a setting to disable automatic checks.
 - When an upgrade exists, show `Current vX.Y.Z`, `Available vA.B.C`, and only the four changelog sections for the new release, with `Update now` and `Later`. Do not offer a permanent changelog-dismissal option.
 - One click starts download, verification and setup. Show progress, allow cancel before installer launch, preserve PDF documents and app settings, and reopen SABL after a successful install.
 - Show a clear error and manual release link when a check or update fails. Never block offline use or silently install or downgrade.
@@ -55,7 +55,7 @@ Installed SABL: Qt update checker
 - Use nonblocking Qt networking in the UI coordinator. Query `/repos/ertanturan/sabl-pdf/releases/latest`; handle 404/no releases, limits, TLS, timeouts, and malformed responses. Prefer ETag conditional requests and a 24-hour cache. Skip drafts and prereleases.
 - Reject versions less than or equal to the installed version, non-`vMAJOR.MINOR.PATCH` tags, unknown architectures, or missing manifest/installer assets. Do not infer a download URL from an arbitrary release description.
 - Use release-specific GitHub body text for the update dialog, never the cumulative `CHANGELOG.md`. Validate/limit displayed Markdown and never execute links or scripts from it.
-- Keep a single update check/download active, support user cancellation, and remember a skipped version. Manual checks bypass the 24-hour automatic-check limit.
+- Keep a single update check/download active, and let users cancel future downloads. Manual checks bypass the 24-hour automatic-check limit. Closing update notes never hides the persistent indicator.
 
 ### Safe one-click installer handoff
 
@@ -69,7 +69,7 @@ Installed SABL: Qt update checker
 ## Proposed implementation sequence
 
 1. **Release foundation PR:** shared version derivation, tagged release validation, frozen changelog gating and GitHub release publishing (depends on the changelog plan).
-2. **Update detection PR:** pure version/manifest service, offline tests and PySide6 update notification, manual checking and privacy settings.
+2. **Update detection PR:** implemented in `feature/manual-check-for-updates` with a pure version comparator, startup and manual GitHub checks, a persistent notice, offline cache, and privacy toggle. Signed manifest verification remains in the next stage.
 3. **Verified delivery PR:** signed-manifest verification, download state/progress, cancellation and retry, tests for bad signatures and corrupt assets.
 4. **Install and resume PR:** safe unsaved-document handling, installer handoff, close/relaunch and tests for interrupted installs.
 5. **Windows release smoke PR:** test upgrading an installed old version to a new one, preserving app data, uninstaller metadata and file association.
@@ -95,4 +95,4 @@ Do not enable one-click installation until signature and recovery tests pass. Ea
 - [GitHub immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
 - [GitHub releases API](https://docs.github.com/en/rest/releases/releases)
 
-The release workflow is manually triggered and publishes installers in the existing public source repository. This plan does not implement or enable the in-app updater.
+The release workflow is manually triggered and publishes installers in the existing public source repository. The application can identify and display newer releases, but it cannot automatically download or install them yet. That requires the planned signed-manifest verification and installer handoff.
