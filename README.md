@@ -1,6 +1,16 @@
 # SABL PDF
 
-An offline PDF viewer and editor for Windows, built with Python, PySide6 and PyMuPDF. No account, ads, telemetry or subscription.
+SABL PDF is a Windows desktop app for opening, reviewing and making common changes to PDF files without uploading documents to a service. You can work with several PDFs in tabs, fill forms, add text and signatures, annotate pages, reorganise pages and save the result locally.
+
+It runs offline and requires no account or subscription. It does not include advertising or telemetry.
+
+## Tech Stack
+
+- **Python 3.12+** for the application and PDF services.
+- **PySide6 (Qt)** for the Windows desktop interface.
+- **PyMuPDF** for PDF rendering, text extraction and document operations.
+- **Pillow** for image handling; **Tesseract OCR** for scanned-page text recognition through PyMuPDF.
+- **PyInstaller** for executable packaging and **Inno Setup 6** for the Windows installer.
 
 ## Features
 
@@ -11,7 +21,7 @@ An offline PDF viewer and editor for Windows, built with Python, PySide6 and PyM
 - **Annotations:** Highlight, underline, add notes and remove annotations.
 - **Compression:** Optimise PDF object streams and optionally recompress images. Savings depend on the file.
 - **Conversion:** Add images as PDF pages or export PDF pages as PNG files.
-- **OCR:** Recognise scanned-page text locally and export it as text.
+- **OCR:** Recognise scanned-page text locally using Tesseract OCR and export it as text. Tesseract OCR support and language data must be available.
 
 ## Run from source (Windows)
 
@@ -30,7 +40,7 @@ After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen.
 ### Build and OCR prerequisites
 
 - Install **Inno Setup 6** before running `build.cmd`. The installer is written to `dist/installer/SABL-PDF-Setup.exe`.
-- OCR requires Tesseract language data. For source runs, install English `eng.traineddata` and configure `TESSDATA_PREFIX` if needed.
+- **OCR requires Tesseract.** PyMuPDF uses the Tesseract engine built into MuPDF, but needs Tesseract language data (`eng.traineddata` for English). For source runs, install Tesseract OCR with English language data and, if PyMuPDF cannot locate it, set `TESSDATA_PREFIX` to the folder containing `eng.traineddata` (for example, `C:\\Program Files\\Tesseract-OCR\\tessdata`). The Tesseract command-line executable is not called when the data path is provided.
 - For a local installer build, put `eng.traineddata` in `installer/tessdata/` before building. The tagged-release workflow downloads this file for its installer build.
 
 ## Important limitations
