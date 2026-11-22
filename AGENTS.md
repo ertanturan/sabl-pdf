@@ -24,8 +24,10 @@
 ## Editable placed content
 - Every placed PDF item must be selectable by clicking it, repositionable with a held left mouse button, and removable with Delete or the item context menu.
 - New placement tools must use the shared placed-item service and canvas interaction model.
-- Do not flatten newly placed items into uneditable page content; preserve editable PDF annotations.
-- Add selection, drag, deletion, and persistence regression tests when adding new item types.
+- Every movable item, including future types, must be transferable between PDF pages through drag and drop.
+- A cross-page move must preserve editable content, visual appearance, and save/reopen persistence; it must not flatten annotations.
+- Drag previews must follow the destination page, support edge scrolling, and reject out-of-page drops.
+- Add selection, same-page drag, cross-page drag, deletion, and persistence regression tests when adding new item types.
 - Every placement tool must show a cursor-following preview before commit; make its size and landing position match the saved PDF item.
 - Right-click and Escape must cancel an uncommitted placement without changing the document.
 
@@ -67,6 +69,11 @@
 - Each entry includes change, branch, commit scope and corresponding test coverage.
 - Append entries; never overwrite earlier records from the same date.
 - Documentation-only or infrastructure commits may also be recorded for traceability.
+- Follow `docs/plans/versioned-changelog.md` for the planned four-section release changelog.
+- Only the current, unreleased version's changelog can be edited. NEVER edit, delete, rename, reorder, reclassify, or rewrite entries for any prior published version. This applies to all agents and contributors, including corrections.
+- Record corrections to old changelogs as explicit new entries in the current version; never rewrite history.
+- Never hand-edit generated cumulative history. Release automation and CI must verify every previous version's byte-for-byte integrity against its published commit.
+- All GitHub Releases must contain only the matching version's new features, bugfixes, performance improvements, and documentation changes. Enable immutable GitHub Releases to protect published notes, tags, and assets.
 
 ## Distribution
 - Ship a Windows installer using PyInstaller with Inno Setup.
