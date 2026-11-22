@@ -71,6 +71,19 @@ def test_build_launcher_forwards_version_options() -> None:
     assert "versioning.py', 'bump'" in script
 
 
+def test_github_release_bumps_only_when_triggered_manually() -> None:
+    workflow = (ROOT / '.github' / 'workflows' / 'installer.yml').read_text(encoding='utf-8')
+    build = (ROOT / 'scripts' / 'build.ps1').read_text(encoding='utf-8')
+
+    assert 'workflow_dispatch:' in workflow
+    assert '  push:' not in workflow
+    assert 'default: minor' in workflow
+    assert '          - secondary' in workflow
+    assert '          - major' in workflow
+    assert 'scripts/release.py prepare --part $env:BUMP_PART' in workflow
+    assert "if ($NoVersionBump -or (-not ($Major -or $Secondary -or $Minor)))" in build
+
+
 def test_tagged_build_does_not_change_release_version() -> None:
     workflow = (ROOT / ".github" / "workflows" / "installer.yml").read_text(encoding="utf-8")
     script = (ROOT / "scripts" / "build.ps1").read_text(encoding="utf-8")
