@@ -70,7 +70,7 @@ def test_windows_launcher_runs_coverage_and_static_checks_in_order() -> None:
     test = "Invoke-Check -Arguments @('-m', 'pytest', '-q', '--cov=sabl_pdf', '--cov-report=term-missing', '--cov-fail-under=80')"
     compile_python = "Invoke-Check -Arguments @('-m', 'compileall', '-q', 'src')"
     lint = "Invoke-Check -Arguments @('-m', 'ruff', 'check', '.')"
-    type_check = "Invoke-Check -Arguments @('-m', 'pyright')"
+    type_check = "Invoke-Check -Arguments @('-m', 'pyright', '--pythonpath', $pythonPath)"
 
     script = script_path.read_text(encoding="utf-8")
 
@@ -176,3 +176,12 @@ def test_first_release_lookup_uses_successful_list_command() -> None:
     assert "if ($LASTEXITCODE -ne 0) { throw 'Cannot check existing GitHub Releases.' }" in workflow
     assert 'if ($releaseTags -contains $tag) { throw "Release $tag already exists." }' in workflow
     assert workflow.index("gh release list") < workflow.index('"version=$version" >> $env:GITHUB_OUTPUT')
+
+def test_windows_pyright_uses_installed_virtual_environment() -> None:
+    script_path = ROOT / "scripts" / "test.ps1"
+
+    script = script_path.read_text(encoding="utf-8")
+
+    assert "$pythonPath = Join-Path $projectRoot '.venv\\Scripts\\python.exe'" in script
+    assert "Invoke-Check -Arguments @('-m', 'pyright', '--pythonpath', $pythonPath)" in script
+    assert "& $pythonPath @Arguments" in script
