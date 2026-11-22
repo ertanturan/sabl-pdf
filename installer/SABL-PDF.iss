@@ -1,5 +1,5 @@
 #define AppName "SABL PDF"
-#define AppVersion "0.1.0"
+#define AppVersion "1.0.0"
 
 [Setup]
 AppId={{B0B635E2-0CB9-4FA1-BF4C-7BF92A2F1D94}
