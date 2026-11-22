@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, 
 from sabl_pdf import __version__
 from sabl_pdf.services.release_notes import installed_release_notes
 from sabl_pdf.ui.whats_new_dialog import WhatsNewDialog
+from sabl_pdf.ui.default_apps import open_default_apps_settings
 from sabl_pdf.core.session import DocumentSession
 from sabl_pdf.services.viewer import SearchMatch, ViewerService
 from sabl_pdf.ui.canvas import PdfCanvas
@@ -84,6 +85,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         layout.addWidget(self.workspace)
         self.setCentralWidget(central)
         self.welcome.open_requested.connect(self.open_pdf)
+        self.welcome.default_app_requested.connect(self.open_default_pdf_settings)
         self.welcome.file_dropped.connect(self.open_path)
         self._search_matches: list[SearchMatch] = []
         self._search_index = -1
@@ -120,6 +122,9 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(file_menu, "Save as", self.save_as)
         self._action(file_menu, "Copy page text", self.copy_page_text, "Ctrl+C")
         self._action(file_menu, "Copy selected text", self.copy_selection)
+        file_menu.addSeparator()
+        self.default_pdf_action = file_menu.addAction("Set as default PDF app")
+        self.default_pdf_action.triggered.connect(self.open_default_pdf_settings)
         edit = self.menuBar().addMenu("Text & Forms")
         self._action(edit, "Add text box", self.add_text_box)
         self._action(edit, "Edit text box", self.edit_text_box)
@@ -151,6 +156,19 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         help_menu = self.menuBar().addMenu("Help")
         self.whats_new_action = help_menu.addAction("What's New")
         self.whats_new_action.triggered.connect(self.show_whats_new)
+
+    def open_default_pdf_settings(self) -> None:
+        if open_default_apps_settings():
+            self.statusBar().showMessage(
+                "In Windows Default apps, select SABL PDF for .pdf files.", 12000
+            )
+            return
+        QMessageBox.warning(
+            self,
+            "Default PDF app",
+            "Could not open Windows Default apps. Install SABL PDF, then open "
+            "Settings > Apps > Default apps and select SABL PDF for .pdf files.",
+        )
 
     def show_whats_new(self) -> None:
         WhatsNewDialog(__version__, installed_release_notes(), self).exec()
