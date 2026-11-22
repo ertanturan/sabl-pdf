@@ -1,10 +1,10 @@
 # Unreleased
 
 ## New features
-- None.
+- Redact selected text, page regions or matching phrases into a checked image-only PDF.
 
 ## Bugfixes
-- None.
+- Fix native PDF text selection and copying with Ctrl+C or right-click.
 
 ## Performance improvements
 - None.

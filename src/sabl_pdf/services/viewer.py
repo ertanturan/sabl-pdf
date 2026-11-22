@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import fitz
 
 from sabl_pdf.core.session import DocumentSession
+from sabl_pdf.services.text_selection import TextSelection, TextSelectionService
 
 
 @dataclass(frozen=True)
@@ -14,6 +15,7 @@ class SearchMatch:
 class ViewerService:
     def __init__(self, session: DocumentSession) -> None:
         self._session = session
+        self._selection = TextSelectionService(session)
 
     def page_count(self) -> int:
         return len(self._session.document)
@@ -37,3 +39,8 @@ class ViewerService:
             for rect in page.search_for(query):
                 matches.append(SearchMatch(page_number, tuple(rect)))
         return matches
+
+    def select_text(
+        self, page: int, start: tuple[float, float], end: tuple[float, float]
+    ) -> TextSelection | None:
+        return self._selection.select(page, start, end)
