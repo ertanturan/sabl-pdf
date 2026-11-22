@@ -5,6 +5,8 @@ from pathlib import Path
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
+from sabl_pdf.branding import DISPLAY_NAME
+
 from sabl_pdf.ui.window import MainWindow
 
 
@@ -14,7 +16,7 @@ def main() -> int:
     if tessdata_directory.is_dir():
         os.environ.setdefault("TESSDATA_PREFIX", str(tessdata_directory))
     application = QApplication(sys.argv)
-    application.setApplicationName("SABL PDF")
+    application.setApplicationName(DISPLAY_NAME)
     window = MainWindow()
     if len(sys.argv) > 1:
         window.open_path(Path(sys.argv[1]))

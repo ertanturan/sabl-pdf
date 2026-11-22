@@ -75,7 +75,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Invalid changelog changes.' }
           git commit -m "release: freeze $env:TAG"
           if ($LASTEXITCODE -ne 0) { throw 'Cannot commit versioned release.' }
-          git tag -a $env:TAG -m "SABL PDF $env:TAG"
+          git tag -a $env:TAG -m "Simple PDF $env:TAG"
           if ($LASTEXITCODE -ne 0) { throw 'Cannot create release tag.' }
       - name: Install Inno Setup
         shell: pwsh
@@ -94,14 +94,14 @@ jobs:
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          $filename = "SABL-PDF-Setup-$env:TAG-x64.exe"
+          $filename = "Simple-PDF-Setup-$env:TAG-x64.exe"
           $installer = Join-Path 'dist/installer' $filename
           if (-not (Test-Path -LiteralPath $installer)) { throw "Missing installer: $installer" }
-          $installPath = Join-Path $env:RUNNER_TEMP 'SABL PDF smoke'
+          $installPath = Join-Path $env:RUNNER_TEMP 'Simple PDF smoke'
           $setupArgs = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', ('/DIR="' + $installPath + '"'))
           $p = Start-Process -FilePath (Resolve-Path $installer).Path -ArgumentList $setupArgs -PassThru -Wait
           if ($p.ExitCode -ne 0) { throw "Installer failed: $($p.ExitCode)" }
-          if (-not (Test-Path (Join-Path $installPath 'SABL PDF.exe'))) { throw 'Smoke test did not install the executable.' }
+          if (-not (Test-Path (Join-Path $installPath 'Simple PDF.exe'))) { throw 'Smoke test did not install the executable.' }
           $checksum = "$installer.sha256"
           $hash = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $filename" | Set-Content -LiteralPath $checksum -Encoding ascii
@@ -109,7 +109,7 @@ jobs:
           "checksum=$checksum" >> $env:GITHUB_OUTPUT
       - uses: actions/upload-artifact@v4
         with:
-          name: SABL-PDF-${{ steps.version.outputs.tag }}
+          name: Simple-PDF-${{ steps.version.outputs.tag }}
           path: |
             ${{ steps.asset.outputs.installer }}
             ${{ steps.asset.outputs.checksum }}
@@ -144,7 +144,7 @@ jobs:
           CHECKSUM: ${{ steps.asset.outputs.checksum }}
         run: |
           $notes = "docs/changelog/releases/$env:TAG.md"
-          gh release create $env:TAG $env:INSTALLER $env:CHECKSUM -R $env:GITHUB_REPOSITORY --draft --title "SABL PDF $env:TAG" --notes-file $notes
+          gh release create $env:TAG $env:INSTALLER $env:CHECKSUM -R $env:GITHUB_REPOSITORY --draft --title "Simple PDF $env:TAG" --notes-file $notes
           if ($LASTEXITCODE -ne 0) { throw 'Cannot stage GitHub Release.' }
       - name: Publish GitHub Release
         shell: pwsh

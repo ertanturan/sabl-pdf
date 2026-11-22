@@ -8,10 +8,12 @@ from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget, QPushButton
 
 from sabl_pdf import __version__
+from sabl_pdf.branding import DISPLAY_NAME
 from sabl_pdf.services.release_notes import installed_release_notes
 from sabl_pdf.services.updates import AvailableUpdate, automatic_check_due, parse_latest_release
 from sabl_pdf.ui.update_available_dialog import UpdateAvailableDialog
 from sabl_pdf.ui.whats_new_dialog import WhatsNewDialog
+from sabl_pdf.ui.default_apps import open_default_apps_settings
 from sabl_pdf.core.session import DocumentSession
 from sabl_pdf.services.viewer import SearchMatch, ViewerService
 from sabl_pdf.ui.canvas import PdfCanvas
@@ -71,7 +73,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._selection_action: Callable[[tuple], None] | None = None
         self._active_tool: str | None = None
         self._document_actions: list[QAction] = []
-        self.setWindowTitle("SABL PDF")
+        self.setWindowTitle(DISPLAY_NAME)
         self.resize(1024, 780)
         self._empty_canvas = PdfCanvas()
         self.canvas = self._empty_canvas
@@ -95,6 +97,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         layout.addWidget(self.workspace)
         self.setCentralWidget(central)
         self.welcome.open_requested.connect(self.open_pdf)
+        self.welcome.default_app_requested.connect(self.open_default_pdf_settings)
         self.welcome.file_dropped.connect(self.open_path)
         self._search_matches: list[SearchMatch] = []
         self._search_index = -1
@@ -143,6 +146,9 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(file_menu, "Save as", self.save_as)
         self._action(file_menu, "Copy page text", self.copy_page_text)
         self._action(file_menu, "Copy selected text", self.copy_selection, "Ctrl+C")
+        file_menu.addSeparator()
+        self.default_pdf_action = file_menu.addAction("Set as default PDF app")
+        self.default_pdf_action.triggered.connect(self.open_default_pdf_settings)
         edit = self.menuBar().addMenu("Text & Forms")
         self._action(edit, "Add text box", self.add_text_box)
         self._action(edit, "Edit text box", self.edit_text_box)
@@ -185,6 +191,19 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         )
         self.auto_updates_action.toggled.connect(self._set_automatic_update_checks)
 
+
+    def open_default_pdf_settings(self) -> None:
+        if open_default_apps_settings():
+            self.statusBar().showMessage(
+                f"In Windows Default apps, select {DISPLAY_NAME} for .pdf files.", 12000
+            )
+            return
+        QMessageBox.warning(
+            self,
+            "Default PDF app",
+            f"Could not open Windows Default apps. Install {DISPLAY_NAME}, then open "
+            f"Settings > Apps > Default apps and select {DISPLAY_NAME} for .pdf files.",
+        )
 
     def show_whats_new(self) -> None:
         WhatsNewDialog(__version__, installed_release_notes(), self).exec()
@@ -364,7 +383,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._first_thumbnails = True
         self.workspace.setCurrentWidget(self.welcome)
         self.status.setText("Open a PDF to begin")
-        self.setWindowTitle("SABL PDF")
+        self.setWindowTitle(DISPLAY_NAME)
 
     def _update_tab_title(self) -> None:
         tab = self._active_tab
@@ -373,7 +392,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         index = self.document_tabs.indexOf(tab)
         if index >= 0:
             self.document_tabs.setTabText(index, tab.title())
-        self.setWindowTitle(f"SABL PDF | {tab.title()}")
+        self.setWindowTitle(f"{DISPLAY_NAME} | {tab.title()}")
 
     def _open_document(self, path: str | Path) -> None:
         requested = Path(path)
@@ -605,7 +624,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         try:
             operation()
         except Exception as exc:
-            QMessageBox.warning(self, "SABL PDF", str(exc))
+            QMessageBox.warning(self, DISPLAY_NAME, str(exc))
 
 
     def _refresh(self) -> None:

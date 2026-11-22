@@ -1,6 +1,7 @@
-# SABL PDF Agent Instructions
+# Simple PDF Agent Instructions
 
 ## Product
+- All user-facing app, dialog, CLI, installer, release and Windows integration names use `Simple PDF`. Keep stable internal package, settings and PDF ProgID identifiers for compatibility.
 - Windows-only desktop application built with Python 3.12+, PySide6 and PyMuPDF.
 - Offline-first, no login, subscriptions, advertisements, telemetry or online services.
 - One-purpose workflows and a simple, accessible interface.

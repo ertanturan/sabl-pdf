@@ -152,7 +152,7 @@ def prepare_release(root: Path, part: str, today: str | None = None) -> str:
 
 
 def main(args: list[str] | None = None, root: Path = ROOT) -> int:
-    parser = argparse.ArgumentParser(description="Prepare SABL PDF's manual GitHub release")
+    parser = argparse.ArgumentParser(description="Prepare Simple PDF's manual GitHub release")
     commands = parser.add_subparsers(dest="action", required=True)
     prepare = commands.add_parser("prepare")
     prepare.add_argument("--part", choices=("minor", "secondary", "major"), default="minor")

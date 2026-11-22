@@ -4,7 +4,7 @@ Status: Manual GitHub Actions releases target the public `ertanturan/sabl-pdf` r
 
 ## Current state
 
-SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds an onedir executable; Inno Setup 6 builds `dist/installer/SABL-PDF-Setup-vX.Y.Z-x64.exe`. The `.github/workflows/installer.yml` job uses manual `workflow_dispatch` and an automatic selected version increment to build and stage/publish a versioned GitHub Release. Version `0.1.0` appears separately in `pyproject.toml`, `src/sabl_pdf/__init__.py` and `installer/SABL-PDF.iss`.
+Simple PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds an onedir executable; Inno Setup 6 builds `dist/installer/Simple-PDF-Setup-vX.Y.Z-x64.exe`. The `.github/workflows/installer.yml` job uses manual `workflow_dispatch` and an automatic selected version increment to build and stage/publish a versioned GitHub Release. Version `0.1.0` appears separately in `pyproject.toml`, `src/sabl_pdf/__init__.py` and `installer/SABL-PDF.iss`.
 
 **Distribution:** `ertanturan/sabl-pdf` is public. Releases and installers belong in this same repository. No distribution-only repository or access token in the installed application is required.
 
@@ -13,7 +13,7 @@ SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds a
 - Automatically check for a newer stable release on launch, without blocking document opening, and no more than once every 24 hours thereafter.
 - Keep `Help > What's New` always available with offline notes for the installed version, including after updates. On launch after a recorded version change, show those notes once, without a permanent opt-out. Add `Help > Check for updates` for an immediate manual check and a setting to disable automatic checks.
 - When an upgrade exists, show `Current vX.Y.Z`, `Available vA.B.C`, and only the four changelog sections for the new release, with `Update now` and `Later`. Do not offer a permanent changelog-dismissal option.
-- One click starts download, verification and setup. Show progress, allow cancel before installer launch, preserve PDF documents and app settings, and reopen SABL after a successful install.
+- One click starts download, verification and setup. Show progress, allow cancel before installer launch, preserve PDF documents and app settings, and reopen Simple PDF after a successful install.
 - Show a clear error and manual release link when a check or update fails. Never block offline use or silently install or downgrade.
 
 The app currently promises offline-first use: disclose that checking updates contacts GitHub over HTTPS, does not upload PDFs and can be disabled. No account, analytics, background PDF upload or privileged service is needed.
@@ -24,27 +24,27 @@ The app currently promises offline-first use: disclose that checking updates con
 Public ertanturan/sabl-pdf: tagged source commit + frozen release notes
   -> Windows CI: test, build, smoke-test, checksum, publish
   -> GitHub Release vX.Y.Z in this repository
-       - SABL-PDF-Setup-vX.Y.Z-x64.exe
-       - SABL-PDF-Setup-vX.Y.Z-x64.exe.sha256
+       - Simple-PDF-Setup-vX.Y.Z-x64.exe
+       - Simple-PDF-Setup-vX.Y.Z-x64.exe.sha256
        - release notes for vX.Y.Z only
 
 Future one-click update delivery adds signed update-manifest.json(.sig)
 to the same release; signatures are not implemented yet.
 
-Installed SABL: Qt update checker
+Installed Simple PDF: Qt update checker
   -> public GitHub Releases API
   -> compare signed SemVer manifest against installed version
   -> show version-specific notes
   -> download + verify in user-owned staging folder
   -> save/close documents and launch installer
-  -> updater process exits; Inno replaces app; reopen installed SABL
+  -> updater process exits; Inno replaces app; reopen installed Simple PDF
 ```
 
 ### Release publication
 
 1. Use the changelog rules in `docs/plans/versioned-changelog.md`. A manually triggered workflow on `master` selects the next version (`minor` by default, or `secondary`/`major`), freezes that version's changelog, creates a versioned source commit and tag, and builds from that exact source state. The release-record PR must be merged manually before triggering another release. Require the project, tag, snapshot, application and installer versions to agree.
 2. Extend the existing Windows installer workflow to build, test and smoke-test the tagged release, bundle OCR data, then produce a **versioned** installer filename. Preserve the existing stable Inno `AppId` and installation scope to upgrade in place.
-3. **Future updater prerequisite:** generate a signed update manifest containing release SemVer, platform, installer name, size, SHA-256, supported versions, and tag. Store the signing private key in protected CI secrets or a signing service and embed only its public key in SABL. The current manual release workflow publishes an installer and SHA-256 checksum, not a signed manifest.
+3. **Future updater prerequisite:** generate a signed update manifest containing release SemVer, platform, installer name, size, SHA-256, supported versions, and tag. Store the signing private key in protected CI secrets or a signing service and embed only its public key in Simple PDF. The current manual release workflow publishes an installer and SHA-256 checksum, not a signed manifest.
 4. Publish a draft release in `ertanturan/sabl-pdf` using `docs/changelog/releases/vX.Y.Z.md` as its **entire** body. Enable immutable releases in this repository; publish after assets are attached and verified, and mark stable releases as latest. GitHub supplies source archives for releases of this public repository.
 5. Use the workflow's built-in `GITHUB_TOKEN` with `contents: write`, `pull-requests: write`, and `actions: write`. Configure repository Actions permissions to permit branch pushes, pull request creation, and explicit CI dispatch for the release-record branch. Publish only after a versioned source tag exists in the same repository. Failed runs must leave any incomplete release as a draft rather than a partial public stable release.
 6. Ordinary CI and local `build.cmd` builds must never auto-increment versions or publish GitHub Releases. Only the manual GitHub Actions release workflow may bump versions automatically and distribute the binary. Explicit local version bump flags remain available for development. The installer packaging step always passes `-NoVersionBump` to preserve the version prepared for that release. Existing CI artifacts are not substitutes for public release assets.
@@ -78,7 +78,7 @@ Do not enable one-click installation until signature and recovery tests pass. Ea
 
 ## Acceptance
 
-- A publicly installed SABL can check for a stable release without private-repository access or credentials.
+- A publicly installed Simple PDF can check for a stable release without private-repository access or credentials.
 - After an upgrade, show that version's notes and keep them accessible through Help > What's New at any time, without a permanent dismissal option. Installation may require a single user action once safely verified.
 - No newer release, network offline, 404, rate limits and malformed metadata leave the app responsive and usable.
 - Missing/wrong signing key, altered manifest, SHA mismatch, wrong platform and downgrade never execute the installer.

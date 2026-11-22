@@ -17,7 +17,7 @@ def test_whats_new_dialog_displays_version_notes_without_opening_links() -> None
     buttons = dialog.findChild(QDialogButtonBox)
 
     assert application is not None
-    assert dialog.windowTitle() == "What's New in SABL PDF v1.2.3"
+    assert dialog.windowTitle() == "What's New in Simple PDF v1.2.3"
     assert viewer is not None
     assert "Fixed page placement." in viewer.toPlainText()
     assert not viewer.openLinks()
@@ -37,6 +37,7 @@ def test_whats_new_shows_fallback_when_release_notes_missing() -> None:
 
     assert application is not None
     assert viewer is not None
+    assert "Simple PDF v2.0.0" in viewer.toPlainText()
     assert "Release notes are unavailable for this version." in viewer.toPlainText()
     dialog.close()
 
