@@ -35,6 +35,21 @@ Requires **Python 3.12+** available as `py` or `python`. From a checkout, double
 
 The PowerShell equivalents are `./scripts/run.ps1`, `./scripts/test.ps1` and `./scripts/build.ps1`. The `.cmd` launchers are intended for double-clicking; they invoke PowerShell without requiring a permanent execution-policy change. Tests use Qt offscreen mode.
 
+### Build version numbers
+
+A local build increments the last component of the version by default. SABL uses `x.y.z` with `x` as major, `y` as secondary and `z` as minor.
+
+| Command | Example from `0.1.9` |
+| --- | --- |
+| `build.cmd` or `build.cmd -Minor` | `0.1.10` |
+| `build.cmd -Secondary` | `0.2.0` |
+| `build.cmd -Major` | `1.0.0` |
+| `build.cmd -NoVersionBump` | `0.1.9` |
+
+The same flags work with `./scripts/build.ps1`. Run one flag at a time. Bumping synchronises `pyproject.toml`, the application version and the Inno Setup version before tests and packaging. The new version remains in the working tree, so commit these updates when preparing a release. A bump can remain even if a later packaging step fails.
+
+Tagged CI builds use `-NoVersionBump` and reject a version that does not match the release tag. A local build does not publish a GitHub Release or freeze a changelog.
+
 After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen. Use **Ctrl+F** to search, **Ctrl+S** to save, or **File > Save as** to write a separate copy.
 
 ### Build and OCR prerequisites
