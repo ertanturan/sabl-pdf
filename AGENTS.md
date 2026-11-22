@@ -62,6 +62,7 @@
 - Append entries; never overwrite earlier records from the same date.
 - Documentation-only or infrastructure commits may also be recorded for traceability.
 - Follow `docs/plans/versioned-changelog.md` for the planned four-section release changelog.
+- Keep every release changelog bullet to 100 characters maximum, including its `- ` prefix. Split long details into separate bullets without omitting material facts.
 - Only the current, unreleased version's changelog can be edited. NEVER edit, delete, rename, reorder, reclassify, or rewrite entries for any prior published version. This applies to all agents and contributors, including corrections.
 - Record corrections to old changelogs as explicit new entries in the current version; never rewrite history.
 - Never hand-edit generated cumulative history. Release automation and CI must verify every previous version's byte-for-byte integrity against its published commit.
