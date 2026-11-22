@@ -68,7 +68,7 @@ try {
 
     & (Join-Path $PSScriptRoot 'test.ps1')
 
-    & $pythonPath -m PyInstaller --noconfirm --clean --windowed --onedir --name 'SABL PDF' --paths src src/sabl_pdf/main.py
+    & $pythonPath -m PyInstaller --noconfirm --clean --windowed --onedir --name 'SABL PDF' --paths src --add-data 'docs/changelog/releases:release_notes' src/sabl_pdf/main.py
     if ($LASTEXITCODE -ne 0) {
         throw 'PyInstaller failed.'
     }
