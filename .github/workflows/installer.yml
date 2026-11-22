@@ -54,8 +54,9 @@ jobs:
           $tag = "v$version"
           git show-ref --verify --quiet "refs/tags/$tag"
           if ($LASTEXITCODE -eq 0) { throw "Tag $tag already exists." }
-          gh release view $tag -R $env:GITHUB_REPOSITORY *> $null
-          if ($LASTEXITCODE -eq 0) { throw "Public release $tag already exists." }
+          $releaseTags = @(gh release list -R $env:GITHUB_REPOSITORY --limit 1000 --json tagName --jq '.[].tagName')
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot check existing GitHub Releases.' }
+          if ($releaseTags -contains $tag) { throw "Release $tag already exists." }
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "branch=release/$tag" >> $env:GITHUB_OUTPUT
