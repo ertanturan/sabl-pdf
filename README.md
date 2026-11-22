@@ -14,11 +14,12 @@ It runs offline and requires no account or subscription. It does not include adv
 
 ## Features
 
-- **Viewing:** Open PDFs in separate tabs, search existing text, zoom, use page thumbnails and copy text.
+- **Viewing:** Open PDFs in separate tabs, search existing text, zoom, use page thumbnails and select or copy text.
 - **Text and forms:** Add, edit, move or remove text-box annotations; fill PDF text and checkbox fields.
 - **Signatures:** Draw and reuse a signature, or place a PNG/JPEG signature image.
 - **Pages:** Merge PDFs, split page ranges, delete, rotate or reorder pages.
 - **Annotations:** Highlight, underline, add notes and remove annotations.
+- **Redaction:** Redact selected text, page areas or searched phrases into a separate, checked PDF copy.
 - **Compression:** Optimise PDF object streams and optionally recompress images. Savings depend on the file.
 - **Conversion:** Add images as PDF pages or export PDF pages as PNG files.
 - **OCR:** Recognise scanned-page text locally using Tesseract OCR and export it as text. Tesseract OCR support and language data must be available.
@@ -73,7 +74,7 @@ After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen.
 - Text boxes are editable annotations; SABL PDF does **not** modify existing page text in place.
 - Drawn or image signatures are visual marks, **not** certificate-based digital signatures.
 - OCR can extract text, but does **not** yet make scanned PDFs searchable within the PDF. Normal Find searches an existing text layer.
-- **Permanent redaction is not available yet.** Covering text with an annotation does not securely remove the underlying data.
+- **Redacted output is image-only:** Text selection, links, forms, signatures and vector detail are not preserved in the new copy. The original stays unchanged. Review all regions, particularly scanned text: OCR can miss matches. Protected, signed and damaged PDFs are refused.
 
 See [backlog.md](backlog.md) for proposed work, not shipped features.
 
