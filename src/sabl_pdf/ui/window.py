@@ -301,6 +301,9 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         tab.canvas.copy_text_requested.connect(
             lambda: self._from_tab(tab, self.copy_selection)
         )
+        tab.canvas.text_selection_error.connect(
+            lambda message: self._from_tab(tab, self.status.setText, message)
+        )
         tab.canvas.area_selected.connect(
             lambda page, bounds: self._from_tab(tab, self._on_area_selected, page, bounds)
         )
@@ -668,6 +671,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
 
     def _after_edit(self) -> None:
+        self.viewer.clear_ocr_cache()
         self._refresh()
         if self.search_bar.query():
             self._search_query(self.search_bar.query())

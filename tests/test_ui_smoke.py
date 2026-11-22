@@ -692,3 +692,31 @@ def test_redact_selected_native_text(sample_pdf, tmp_path, monkeypatch) -> None:
     with fitz.open(destination) as document:
         assert document[0].get_text() == ""
     window.close()
+
+def test_find_scrolls_to_result_below_the_viewport(tmp_path) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "far-result.pdf"
+    with fitz.open() as document:
+        document.new_page(width=300, height=1500).insert_text((70, 1350), "DistantResult")
+        document.save(path)
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(path)
+    application.processEvents()
+
+    window._search_query("DistantResult")
+    match = window._search_matches[0]
+    x0, y0, x1, y1 = match.bounds
+    page = window.canvas._page_rects[0]
+    match_position = window.canvas.mapFromScene(
+        page.left() + (x0 + x1) / 2, page.top() + (y0 + y1) / 2
+    )
+
+    assert window.search_bar.results.text() == "1 of 1"
+    assert window.canvas.viewport().rect().contains(match_position)
+    window.close()
