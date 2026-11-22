@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -7,6 +8,9 @@ from PySide6.QtWidgets import (
 )
 
 from sabl_pdf.services.redaction import RedactionTarget
+
+if TYPE_CHECKING:
+    from sabl_pdf.ui.window import MainWindow
 
 
 class RedactionReviewDialog(QDialog):
@@ -40,34 +44,38 @@ class RedactionReviewDialog(QDialog):
 
 
 class RedactionActions:
+    @property
+    def _host(self) -> "MainWindow":
+        return cast("MainWindow", self)
+
     def redact_information(self) -> None:
-        if not self._require_document():
+        if not self._host._require_document():
             return
         phrase, accepted = QInputDialog.getText(
-            self, "Redact information", "What information would you like to redact?"
+            self._host, "Redact information", "What information would you like to redact?"
         )
         if not accepted or not phrase.strip():
             return
         try:
-            matches = self.redaction.find(phrase)
+            matches = self._host.redaction.find(phrase)
         except Exception as exc:
             QMessageBox.warning(self, "Redaction unavailable", str(exc))
             return
         if not matches:
             QMessageBox.information(
-                self, "No matches",
+                self._host, "No matches",
                 "No matching text was found. This does not prove the information is absent.",
             )
             return
-        review = RedactionReviewDialog(matches, self)
+        review = RedactionReviewDialog(matches, self._host)
         if review.exec() != QDialog.DialogCode.Accepted:
             return
         self._confirm_redaction(review.selected())
 
     def redact_selected_text(self) -> None:
-        if not self._require_document():
+        if not self._host._require_document():
             return
-        selection = self.canvas.selected_text_regions()
+        selection = self._host.canvas.selected_text_regions()
         if selection is None:
             QMessageBox.information(self, "Redact selection", "Select text in the PDF first.")
             return
@@ -78,12 +86,12 @@ class RedactionActions:
         self._confirm_redaction(targets)
 
     def redact_area(self) -> None:
-        self._select_area(
+        self._host._select_area(
             self._redact_selected_area, preview_label="Redact", tool_name="Redact area"
         )
 
     def _redact_selected_area(self, bounds: tuple) -> None:
-        target = self.redaction.area_target(self.page_index, bounds)
+        target = self._host.redaction.area_target(self._host.page_index, bounds)
         self._confirm_redaction([target])
 
     def _confirm_redaction(self, targets: list[RedactionTarget]) -> None:
@@ -91,7 +99,7 @@ class RedactionActions:
             QMessageBox.information(self, "Redact information", "No areas were selected.")
             return
         answer = QMessageBox.warning(
-            self, "Permanent redaction",
+            self._host, "Permanent redaction",
             "This creates a new image-only PDF with blacked-out regions. "
             "It permanently removes all original PDF content and hidden objects "
             "from the new copy, but selectable text, links, forms, vector quality "
@@ -102,25 +110,25 @@ class RedactionActions:
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
-        source = self.session.path
+        source = self._host.session.path
         suggested = (
             str(source.with_name(source.stem + ".redacted.pdf"))
             if source is not None else ""
         )
         filename, _ = QFileDialog.getSaveFileName(
-            self, "Save verified redacted copy", suggested, "PDF (*.pdf)"
+            self._host, "Save verified redacted copy", suggested, "PDF (*.pdf)"
         )
         if not filename:
             return
         try:
-            report = self.redaction.export(targets, Path(filename))
+            report = self._host.redaction.export(targets, Path(filename))
         except Exception as exc:
             QMessageBox.critical(self, "Redaction failed", str(exc))
             return
-        self.canvas.clear_text_selection()
-        self.canvas.clear_search_highlight()
+        self._host.canvas.clear_text_selection()
+        self._host.canvas.clear_search_highlight()
         QMessageBox.information(
-            self, "Redaction verified",
+            self._host, "Redaction verified",
             f"Saved {report.regions} redacted region(s) across "
             f"{report.pages} page(s) to:\n{report.output}",
         )
