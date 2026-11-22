@@ -1,6 +1,6 @@
-# SABL PDF
+# Simple PDF
 
-SABL PDF is a Windows desktop app for opening, reviewing and making common changes to PDF files without uploading documents to a service. You can work with several PDFs in tabs, fill forms, add text and signatures, annotate pages, reorganise pages and save the result locally.
+Simple PDF is a Windows desktop app for opening, reviewing and making common changes to PDF files without uploading documents to a service. You can work with several PDFs in tabs, fill forms, add text and signatures, annotate pages, reorganise pages and save the result locally.
 
 It runs offline and requires no account or subscription. It does not include advertising or telemetry.
 
@@ -38,7 +38,7 @@ The PowerShell equivalents are `./scripts/run.ps1`, `./scripts/test.ps1` and `./
 
 ### Build version numbers
 
-The manually triggered GitHub release workflow increments the version automatically. SABL uses `x.y.z` with `x` as major, `y` as secondary and `z` as minor. Ordinary local and CI builds preserve their current version.
+The manually triggered GitHub release workflow increments the version automatically. Simple PDF uses `x.y.z` with `x` as major, `y` as secondary and `z` as minor. Ordinary local and CI builds preserve their current version.
 
 | Command | Example from `0.1.9` |
 | --- | --- |
@@ -64,13 +64,13 @@ After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen.
 
 ### Build and OCR prerequisites
 
-- Install **Inno Setup 6** before running `build.cmd`. The installer is written to `dist/installer/SABL-PDF-Setup-vX.Y.Z-x64.exe` using the checked-out version.
+- Install **Inno Setup 6** before running `build.cmd`. The installer is written to `dist/installer/Simple-PDF-Setup-vX.Y.Z-x64.exe` using the checked-out version.
 - **OCR requires Tesseract.** PyMuPDF uses the Tesseract engine built into MuPDF, but needs Tesseract language data (`eng.traineddata` for English). For source runs, install Tesseract OCR with English language data and, if PyMuPDF cannot locate it, set `TESSDATA_PREFIX` to the folder containing `eng.traineddata` (for example, `C:\Program Files\Tesseract-OCR\tessdata`). The Tesseract command-line executable is not called when the data path is provided.
 - For a local installer build, put `eng.traineddata` in `installer/tessdata/` before building. The manually triggered GitHub release workflow downloads it automatically.
 
 ## Important limitations
 
-- Text boxes are editable annotations; SABL PDF does **not** modify existing page text in place.
+- Text boxes are editable annotations; Simple PDF does **not** modify existing page text in place.
 - Drawn or image signatures are visual marks, **not** certificate-based digital signatures.
 - OCR can extract text, but does **not** yet make scanned PDFs searchable within the PDF. Normal Find searches an existing text layer.
 - **Permanent redaction is not available yet.** Covering text with an annotation does not securely remove the underlying data.
@@ -79,7 +79,7 @@ See [backlog.md](backlog.md) for proposed work, not shipped features.
 
 ## PDF file association
 
-The Windows installer registers SABL PDF as a PDF handler and refreshes Explorer's file associations. After installing, select **Set as default PDF app** on the welcome screen or under **File**. This opens Windows **Settings > Apps > Default apps**. On supported Windows 11 versions, SABL PDF's settings open directly; otherwise find `.pdf` and select **SABL PDF**. Once selected, double-clicking PDF files in Explorer opens them in SABL PDF.
+The Windows installer registers Simple PDF as a PDF handler and refreshes Explorer's file associations. After installing, select **Set as default PDF app** on the welcome screen or under **File**. This opens Windows **Settings > Apps > Default apps**. On supported Windows 11 versions, Simple PDF's settings open directly; otherwise find `.pdf` and select **Simple PDF**. Once selected, double-clicking PDF files in Explorer opens them in Simple PDF.
 
 Windows controls the default app. Installation and the button never change your preference automatically. Running from source does not register the app; use the installer before selecting it. You can change your default PDF app again at any time through Windows Settings.
 
