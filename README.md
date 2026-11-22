@@ -89,4 +89,6 @@ Windows controls the default app. Installation and the button never change your 
 
 ## Contributing
 
+When `master` changes, GitHub Actions rebases same-repository PR stacks in dependency order. A conflict gate blocks Windows CI until a PR merges cleanly with its base. Conflicting rebases require manual resolution; fork PR branches are not force-pushed. CI is explicitly restarted after bot rebases.
+
 See [AGENTS.md](AGENTS.md) for the architecture, testing requirements, commit and PR conventions, and change-log rules.

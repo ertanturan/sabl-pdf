@@ -65,6 +65,14 @@
 - Update the PR description when its scope or test results change.
 - Keep PR titles short and scoped to one purpose.
 
+## Pull request verification
+- After each push, rebase, or changed PR base, wait for CI on the latest head SHA to finish. Use `gh pr checks <number> --watch` or the Actions run page; never rely on checks from a previous commit.
+- Check that each PR is free of merge conflicts with its immediate base. Resolve real conflicts before rerunning test jobs; never overwrite or discard another change merely to force a clean merge.
+- Investigate every failed, cancelled, or unexpectedly skipped required check. Read its GitHub Actions job and step logs with `gh run view <run-id> --log-failed`; reproduce the cause, implement the fix, push and recheck.
+- Do not mark a PR ready while `merge-check` or `unit-tests` is pending, skipped, failing, or older than its current head. The 80% coverage requirement and all static checks remain mandatory.
+- Verify stacked PRs parent-first, then check each child again after its parent is rebased or merged. Never auto-merge.
+- If conflicts or CI failures cannot be fixed, record the exact failing check and blocker in the PR; leave the PR unmerged instead of bypassing the gate.
+
 ## Change logs
 - Keep every release changelog bullet to 100 characters maximum, including its `- ` prefix. Split long details into separate bullets without omitting material facts.
 - Record EVERY feature and bug fix in `docs/changes/YYYY-MM-DD.md` using the date of the change.
@@ -102,7 +110,7 @@
 - Never collect analytics or send user files off-device.
 
 ## Main branch protection
-- Changes reach master through pull requests only, after the `unit-tests` status check passes.
+- Changes reach master through pull requests only, after both `merge-check` and `unit-tests` status checks pass.
 - The repository owner may merge their own PRs manually. No approving review is required.
 - Root `manifest.json` describes the GitHub ruleset, but the active ruleset must be updated separately through GitHub settings.
 - CODEOWNERS identifies maintainers without requiring an approval.

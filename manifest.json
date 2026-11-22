@@ -32,6 +32,9 @@
       "parameters": {
         "required_status_checks": [
           {
+            "context": "merge-check"
+          },
+          {
             "context": "unit-tests"
           }
         ],
