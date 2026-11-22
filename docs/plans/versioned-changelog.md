@@ -1,6 +1,6 @@
 # Versioned changelog plan
 
-Status: Planned. No release automation is implemented by this document.
+Status: The draft, frozen note snapshot, cumulative generator, integrity check and manually triggered release preparation are implemented in PR #55. Repository release settings and public distribution still require configuration.
 
 ## Goal
 
