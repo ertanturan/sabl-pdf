@@ -31,7 +31,7 @@ Requires **Python 3.12+** available as `py` or `python`. From a checkout, double
 | --- | --- |
 | `run.cmd` | Creates/reuses `.venv`, installs project and development dependencies, and opens the app. |
 | `test.cmd` | Prepares the environment, then runs pytest, Python compilation and Ruff. |
-| `build.cmd` | Increments the build version, runs checks, builds with PyInstaller and creates the installer with Inno Setup 6. |
+| `build.cmd` | Checks the existing version, runs tests, builds with PyInstaller and creates the Windows installer. |
 
 The PowerShell equivalents are `./scripts/run.ps1`, `./scripts/test.ps1` and `./scripts/build.ps1`. The `.cmd` launchers are intended for double-clicking; they invoke PowerShell without requiring a permanent execution-policy change. Tests use Qt offscreen mode.
 
