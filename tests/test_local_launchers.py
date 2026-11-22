@@ -114,3 +114,53 @@ def test_tagged_build_does_not_change_release_version() -> None:
 
     assert "run: ./scripts/build.ps1 -NoVersionBump" in workflow
     assert "'--expected-tag', $env:GITHUB_REF_NAME" in script
+
+
+def test_release_publishes_to_the_existing_repository() -> None:
+    workflow_path = ROOT / ".github" / "workflows" / "installer.yml"
+
+    workflow = workflow_path.read_text(encoding="utf-8")
+
+    assert "Verify public source repository" in workflow
+    assert "gh release create $env:TAG" in workflow
+    assert "gh release edit $env:TAG" in workflow
+    assert "-R $env:GITHUB_REPOSITORY" in workflow
+    assert "sabl-pdf-releases" not in workflow
+
+
+def test_release_requires_no_personal_access_tokens() -> None:
+    workflow_path = ROOT / ".github" / "workflows" / "installer.yml"
+
+    workflow = workflow_path.read_text(encoding="utf-8")
+
+    assert "GH_TOKEN: ${{ github.token }}" in workflow
+    assert "PUBLIC_RELEASE_TOKEN" not in workflow
+    assert "SOURCE_RELEASE_TOKEN" not in workflow
+    assert "actions: write" in workflow
+    assert "contents: write" in workflow
+    assert "pull-requests: write" in workflow
+
+
+def test_release_pushes_correct_tag_before_publishing() -> None:
+    workflow_path = ROOT / ".github" / "workflows" / "installer.yml"
+
+    workflow = workflow_path.read_text(encoding="utf-8")
+
+    assert workflow.index('git push origin "refs/tags/$env:TAG"') < workflow.index(
+        "gh release create $env:TAG"
+    )
+    assert workflow.index("gh release create $env:TAG") < workflow.index(
+        "gh release edit $env:TAG"
+    )
+
+
+def test_release_dispatches_checks_for_bot_created_pr() -> None:
+    ci_path = ROOT / ".github" / "workflows" / "ci.yml"
+    release_path = ROOT / ".github" / "workflows" / "installer.yml"
+
+    ci = ci_path.read_text(encoding="utf-8")
+    release = release_path.read_text(encoding="utf-8")
+
+    assert "  workflow_dispatch:" in ci
+    assert "gh pr create -R $env:GITHUB_REPOSITORY" in release
+    assert "gh workflow run ci.yml --ref $env:RELEASE_BRANCH" in release
