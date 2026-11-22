@@ -565,3 +565,43 @@ def test_note_placement_has_cursor_preview(sample_pdf, monkeypatch) -> None:
     assert window.canvas._preview_item is None
     monkeypatch.setattr(window, "_confirm_changes", lambda: True)
     window.close()
+
+
+def test_drag_text_box_between_pages(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+    from sabl_pdf.ui.window import MainWindow
+
+    path = tmp_path / "cross-page-drag.pdf"
+    with fitz.open() as document:
+        document.new_page(width=300, height=400)
+        document.new_page(width=300, height=400)
+        document.save(path)
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.resize(700, 1100)
+    window.show()
+    window.open_path(path)
+    xref = window.text_boxes.add(0, (30, 85, 140, 120), "Cross-page")
+    window._refresh()
+    application.processEvents()
+
+    source = window.canvas._page_rects[0]
+    target = window.canvas._page_rects[1]
+    start = window.canvas.mapFromScene(source.left() + 55, source.top() + 100)
+    destination = window.canvas.mapFromScene(target.left() + 70, target.top() + 100)
+    QTest.mousePress(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=start)
+    QTest.mouseMove(window.canvas.viewport(), destination)
+    QTest.mouseRelease(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=destination)
+    application.processEvents()
+
+    assert window.text_boxes.list(0) == []
+    assert len(window.text_boxes.list(1)) == 1
+    assert window.text_boxes.list(1)[0].content == "Cross-page"
+    assert window.text_boxes.list(1)[0].xref != xref
+    monkeypatch.setattr(window, "_confirm_changes", lambda: True)
+    window.close()
