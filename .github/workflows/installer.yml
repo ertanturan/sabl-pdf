@@ -129,10 +129,11 @@ jobs:
       - name: Push release record and open PR
         shell: pwsh
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.SOURCE_RELEASE_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
           RELEASE_BRANCH: ${{ steps.version.outputs.branch }}
         run: |
+          if (-not $env:GH_TOKEN) { throw 'Set SOURCE_RELEASE_TOKEN with Contents and Pull requests write permissions to the private repository.' }
           git push origin "HEAD:refs/heads/$env:RELEASE_BRANCH"
           if ($LASTEXITCODE -ne 0) { throw 'Cannot push release branch.' }
           git push origin "refs/tags/$env:TAG"
