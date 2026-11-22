@@ -79,7 +79,7 @@ Do not enable one-click installation until signature and recovery tests pass. Ea
 ## Acceptance
 
 - A publicly installed SABL can check for a stable release without private-repository access or credentials.
-- A new version shows once, with only its own changelog, and can be installed by a single user action.
+- After an upgrade, show that version's notes and keep them accessible through Help > What's New at any time, without a permanent dismissal option. Installation may require a single user action once safely verified.
 - No newer release, network offline, 404, rate limits and malformed metadata leave the app responsive and usable.
 - Missing/wrong signing key, altered manifest, SHA mismatch, wrong platform and downgrade never execute the installer.
 - Unsaved PDFs are saved with consent or keep the current app open; there is no silent document loss.
