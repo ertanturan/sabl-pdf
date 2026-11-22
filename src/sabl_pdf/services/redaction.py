@@ -32,9 +32,10 @@ class RedactionService:
             raise ValueError("Enter information to redact")
         self._check_source()
         matches: list[RedactionTarget] = []
-        for index, page in enumerate(self._session.document):
+        for index in range(len(self._session.document)):
+            page = self._session.document[index]
             native = page.search_for(phrase)
-            matches.extend(RedactionTarget(index, tuple(rect), phrase) for rect in native)
+            matches.extend(RedactionTarget(index, self._bounds(rect), phrase) for rect in native)
             if page.get_image_info():
                 try:
                     ocr = page.get_textpage_ocr(language="eng", full=True)
@@ -46,13 +47,13 @@ class RedactionService:
                     ) from exc
                 for rect in hits:
                     if not any(fitz.Rect(existing).intersects(rect) for existing in native):
-                        matches.append(RedactionTarget(index, tuple(rect), phrase))
+                        matches.append(RedactionTarget(index, self._bounds(rect), phrase))
         return matches
 
     def area_target(self, page_index: int, display_bounds: tuple) -> RedactionTarget:
         page = self._session.document[page_index]
         rect = fitz.Rect(display_bounds).normalize() * page.derotation_matrix
-        return RedactionTarget(page_index, tuple(rect))
+        return RedactionTarget(page_index, self._bounds(rect))
 
     def export(
         self, targets: list[RedactionTarget], destination: str | Path, scale: float = 2.0
@@ -73,7 +74,8 @@ class RedactionService:
             with fitz.open(stream=self._session.document.tobytes(), filetype="pdf") as working:
                 self._apply(working, targets)
                 with fitz.open() as result:
-                    for page_index, page in enumerate(working):
+                    for page_index in range(len(working)):
+                        page = working[page_index]
                         image = self._render(page, targets, page_index, scale)
                         with BytesIO() as buffer:
                             image.save(buffer, format="PNG")
@@ -126,9 +128,9 @@ class RedactionService:
             touched.add(target.page)
         for index in sorted(touched):
             document[index].apply_redactions(
-                images=fitz.PDF_REDACT_IMAGE_PIXELS,
-                graphics=fitz.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
-                text=fitz.PDF_REDACT_TEXT_REMOVE,
+                images=2,
+                graphics=1,
+                text=0,
             )
 
     def _render(
@@ -158,7 +160,8 @@ class RedactionService:
                 raise RuntimeError("Redaction verification failed: page count")
             if document.embfile_count() or document.get_sigflags() > 0:
                 raise RuntimeError("Redaction verification failed: active PDF objects")
-            for index, page in enumerate(document):
+            for index in range(len(document)):
+                page = document[index]
                 if page.get_text("text").strip() or page.get_links():
                     raise RuntimeError("Redaction verification failed: surviving text or links")
                 if list(page.annots() or ()) or list(page.widgets() or ()):
@@ -167,6 +170,9 @@ class RedactionService:
                 if len(images) != 1:
                     raise RuntimeError("Redaction verification failed: image-only structure")
                 self._verify_pixels(document, page, targets, index, images[0][0])
+
+    def _bounds(self, rect: fitz.Rect) -> tuple[float, float, float, float]:
+        return (rect.x0, rect.y0, rect.x1, rect.y1)
 
     def _verify_pixels(
         self, document: fitz.Document, page: fitz.Page,
