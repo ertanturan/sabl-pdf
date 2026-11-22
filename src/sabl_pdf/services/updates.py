@@ -18,7 +18,7 @@ def parse_version(tag: str) -> tuple[int, int, int]:
     match = VERSION_PATTERN.fullmatch(tag)
     if match is None:
         raise ValueError("GitHub release version is invalid")
-    return tuple(int(part) for part in match.groups())
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
 
 
 def parse_latest_release(payload: bytes, installed_version: str) -> AvailableUpdate | None:
