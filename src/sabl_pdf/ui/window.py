@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, QSize, Qt
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget
 
@@ -99,7 +99,13 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._build_toolbar_preferences()
         self._build_cancel_shortcut()
         self._set_document_actions_enabled(False)
+        self._announce_release_after_upgrade()
 
+    def _announce_release_after_upgrade(self) -> None:
+        previous = self._ui_settings.value("releases/last_launched_version", "", type=str)
+        self._ui_settings.setValue("releases/last_launched_version", __version__)
+        if previous and previous != __version__:
+            QTimer.singleShot(0, self.show_whats_new)
 
     def _action(self, menu, text: str, handler, shortcut: str | None = None) -> QAction:
         action = QAction(text, self)
