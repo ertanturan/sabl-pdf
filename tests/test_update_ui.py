@@ -294,7 +294,8 @@ def test_update_dialog_displays_remote_notes_without_installer_execution() -> No
     buttons = dialog.findChild(QDialogButtonBox)
 
     assert application is not None
-    assert "Installed: v1.0.0" in dialog.findChildren(QTextBrowser)[0].toPlainText() or dialog.windowTitle() == "SABL PDF update available"
+    assert dialog.windowTitle() == "SABL PDF update available"
+    assert viewer is not None
     assert "Faster pages." in viewer.toPlainText()
     assert not viewer.openLinks()
     assert buttons.button(QDialogButtonBox.StandardButton.Close) is not None
