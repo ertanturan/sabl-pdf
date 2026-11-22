@@ -45,7 +45,7 @@ Installed SABL: Qt update checker
 3. Generate the manifest containing schema version, release SemVer, Windows x64 platform, installer asset name, size, SHA-256, minimum supported app version where applicable and release tag. Sign the manifest using a dedicated release signing key stored outside the source repository (protected CI secrets or an approved signing service). Embed only the trusted public verification key in SABL.
 4. Publish a draft public release with those assets and the frozen file `docs/changelog/releases/vX.Y.Z.md` as its **entire** body. Enable immutable releases in the public repository; publish only after every asset is attached and verified. Configure the stable release as the latest release. Do not publish a public source archive or sensitive build logs.
 5. A publish job needs short-lived, narrowly scoped authorization to the public distribution repository (prefer a GitHub App installation token). Release failures must never produce a partial public stable release. Keep the private source and public distribution tags traceable to the same commit and checksum.
-6. Source repository workflows must still support local `build.cmd` and installer creation without publishing. Existing CI artifacts are not a substitute for release assets.
+6. Source repository workflows must still support local `build.cmd` and installer creation without publishing. Local `build.cmd` increments the last version component by default, with `-Secondary`, `-Major`, `-Minor` and `-NoVersionBump` options. Tagged CI builds always pass `-NoVersionBump` and validate that `vX.Y.Z` equals the application version. Existing CI artifacts are not a substitute for release assets.
 
 ### Update checker
 
