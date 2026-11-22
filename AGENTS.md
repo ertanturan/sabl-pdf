@@ -88,6 +88,13 @@
 - Show release notes once after an installed-version change. Keep the Help action available on every launch.
 - Keep release notes tied to the installed version, not the current unreleased draft or newest online release.
 
+## Updates
+- On application startup, check public GitHub Releases asynchronously, at most once per 24 hours after successful checks.
+- Show a persistent, clickable update indicator for a newer stable version, including offline from a safe cache.
+- Help > Check for Updates must bypass the cache and remain available when automatic checks are disabled.
+- Provide an automatic-check setting. Never suppress Help > What's New or permit unchecked update installers to run.
+- Never upload documents, collect analytics, or block PDF editing because a network check fails.
+
 ## Distribution
 - Ship a Windows installer using PyInstaller with Inno Setup.
 - Register a stable PDF ProgID with Windows. Offer PDF association; respect the user-controlled default application setting.
