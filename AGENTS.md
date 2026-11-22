@@ -17,8 +17,10 @@
 ## Editable placed content
 - Every placed PDF item must be selectable by clicking it, repositionable with a held left mouse button, and removable with Delete or the item context menu.
 - New placement tools must use the shared placed-item service and canvas interaction model.
-- Do not flatten newly placed items into uneditable page content; preserve editable PDF annotations.
-- Add selection, drag, deletion, and persistence regression tests when adding new item types.
+- Every movable item, including future types, must be transferable between PDF pages through drag and drop.
+- A cross-page move must preserve editable content, visual appearance, and save/reopen persistence; it must not flatten annotations.
+- Drag previews must follow the destination page, support edge scrolling, and reject out-of-page drops.
+- Add selection, same-page drag, cross-page drag, deletion, and persistence regression tests when adding new item types.
 - Every placement tool must show a cursor-following preview before commit; make its size and landing position match the saved PDF item.
 - Right-click and Escape must cancel an uncommitted placement without changing the document.
 
