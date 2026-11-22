@@ -13,7 +13,7 @@ def test_installer_refreshes_pdf_associations() -> None:
     assert "ChangesAssociations=yes" in installer
     assert 'Subkey: "Software\\Classes\\.pdf\\OpenWithProgids"' in installer
     assert 'ValueName: "SABL.PDF"' in installer
-    assert 'Subkey: "Software\\Classes\\Applications\\SABL PDF.exe\\SupportedTypes"' in installer
+    assert 'Subkey: "Software\\Classes\\Applications\\Simple PDF.exe\\SupportedTypes"' in installer
     assert 'ValueName: ".pdf"' in installer
 
 
@@ -21,7 +21,7 @@ def test_installer_registers_a_per_user_default_app_without_forcing_it() -> None
     installer = (ROOT / "installer" / "SABL-PDF.iss").read_text(encoding="utf-8")
 
     assert 'Root: HKCU; Subkey: "Software\\RegisteredApplications"' in installer
-    assert 'ValueName: "SABL PDF"' in installer
+    assert 'ValueName: "Simple PDF"' in installer
     assert 'Subkey: "Software\\SABL PDF\\Capabilities\\FileAssociations"' in installer
     assert "UserChoice" not in installer
 
@@ -38,7 +38,7 @@ def test_windows_settings_link_targets_registered_app(monkeypatch) -> None:
 
     assert result is True
     launcher.assert_called_once_with(
-        QUrl("ms-settings:defaultapps?registeredAppUser=SABL%20PDF")
+        QUrl("ms-settings:defaultapps?registeredAppUser=Simple%20PDF")
     )
 
 
@@ -54,7 +54,7 @@ def test_windows_settings_link_falls_back_to_general_page(monkeypatch) -> None:
 
     assert result is True
     assert launcher.call_args_list == [
-        call(QUrl("ms-settings:defaultapps?registeredAppUser=SABL%20PDF")),
+        call(QUrl("ms-settings:defaultapps?registeredAppUser=Simple%20PDF")),
         call(QUrl("ms-settings:defaultapps")),
     ]
 
@@ -127,4 +127,5 @@ def test_failed_windows_settings_launch_shows_guidance(monkeypatch) -> None:
     assert application is not None
     launch.assert_called_once_with()
     assert "Could not open Windows Default apps" in warning.call_args.args[2]
+    assert "Simple PDF" in warning.call_args.args[2]
     window.close()
