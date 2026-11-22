@@ -115,8 +115,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(file_menu, "Close tab", self._close_current_tab, "Ctrl+W")
         self._action(file_menu, "Save", self.save_pdf, "Ctrl+S")
         self._action(file_menu, "Save as", self.save_as)
-        self._action(file_menu, "Copy page text", self.copy_page_text, "Ctrl+C")
-        self._action(file_menu, "Copy selected text", self.copy_selection)
+        self._action(file_menu, "Copy page text", self.copy_page_text)
+        self._action(file_menu, "Copy selected text", self.copy_selection, "Ctrl+C")
         edit = self.menuBar().addMenu("Text & Forms")
         self._action(edit, "Add text box", self.add_text_box)
         self._action(edit, "Edit text box", self.edit_text_box)
@@ -148,6 +148,9 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
 
     def _connect_tab(self, tab: DocumentTab) -> None:
+        tab.canvas.copy_text_requested.connect(
+            lambda: self._from_tab(tab, self.copy_selection)
+        )
         tab.canvas.area_selected.connect(
             lambda page, bounds: self._from_tab(tab, self._on_area_selected, page, bounds)
         )
@@ -453,6 +456,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self._close_search()
         else:
             self.canvas.clear_item_selection()
+            self.canvas.clear_text_selection()
 
 
     def _require_document(self) -> bool:
@@ -486,6 +490,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             lambda index: self.viewer.render(index, self.zoom),
             self.zoom,
         )
+        self.canvas.set_text_selector(self.viewer.select_text)
         self.canvas.set_placed_items([
             (item.page, item.xref, item.bounds) for item in self.placed_items.list()
         ])
