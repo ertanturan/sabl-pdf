@@ -92,15 +92,26 @@ def previous_snapshots_unchanged(root: Path) -> None:
             raise ValueError(f"Release snapshot has no published tag: {path.relative_to(root)}")
     for tag in tags:
         path = root / RELEASES / f"{tag}.md"
+        relative = path.relative_to(root).as_posix()
         original = subprocess.run(
-            ["git", "show", f"{tag}:{path.relative_to(root).as_posix()}"],
+            ["git", "rev-parse", f"{tag}:{relative}"],
             cwd=root,
             capture_output=True,
+            text=True,
             check=False,
         )
-        if original.returncode == 0 and (
-            not path.exists() or original.stdout != path.read_bytes()
-        ):
+        if original.returncode != 0:
+            continue
+        if not path.is_file():
+            raise ValueError(f"Published changelog cannot change: {path.relative_to(root)}")
+        current = subprocess.run(
+            ["git", "hash-object", f"--path={relative}", relative],
+            cwd=root,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        if original.stdout.strip() != current.stdout.strip():
             raise ValueError(f"Published changelog cannot change: {path.relative_to(root)}")
 
 
