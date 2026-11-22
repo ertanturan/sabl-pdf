@@ -300,3 +300,57 @@ def test_update_dialog_displays_remote_notes_without_installer_execution() -> No
     assert not viewer.openLinks()
     assert buttons.button(QDialogButtonBox.StandardButton.Close) is not None
     dialog.close()
+
+
+def test_manual_success_shows_release_notes_and_keeps_update_indicator(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import QSettings
+    from PySide6.QtNetwork import QNetworkReply
+    from PySide6.QtWidgets import QApplication
+
+    from sabl_pdf.ui.update_available_dialog import UpdateAvailableDialog
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    settings = QSettings(str(tmp_path / "manual-success.ini"), QSettings.Format.IniFormat)
+    window = MainWindow(settings=settings)
+    opened = Mock(return_value=0)
+    monkeypatch.setattr(UpdateAvailableDialog, "exec", opened)
+    reply = Mock()
+    reply.error.return_value = QNetworkReply.NetworkError.NoError
+    reply.readAll.return_value = NEW_RELEASE
+    window._manual_update_check = True
+
+    window._finish_update_check(reply)
+
+    assert application is not None
+    opened.assert_called_once()
+    assert window.update_notice.text() == "Update available: v9.0.0"
+    assert not window.update_notice.isHidden()
+    window.close()
+
+
+def test_invalid_automatic_response_does_not_show_a_popup(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import QSettings
+    from PySide6.QtNetwork import QNetworkReply
+    from PySide6.QtWidgets import QApplication, QMessageBox
+
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    settings = QSettings(str(tmp_path / "invalid.ini"), QSettings.Format.IniFormat)
+    window = MainWindow(settings=settings)
+    warning = Mock()
+    monkeypatch.setattr(QMessageBox, "warning", warning)
+    reply = Mock()
+    reply.error.return_value = QNetworkReply.NetworkError.NoError
+    reply.readAll.return_value = b'{bad response'
+
+    window._finish_update_check(reply)
+
+    assert application is not None
+    warning.assert_not_called()
+    assert window.update_notice.isHidden()
+    assert settings.value("updates/last_successful_check") is None
+    window.close()
