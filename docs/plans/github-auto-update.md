@@ -1,6 +1,6 @@
 # GitHub Releases auto-update plan
 
-Status: Manual GitHub Actions releases target the public `ertanturan/sabl-pdf` repository. The source workflow uses the built-in `GITHUB_TOKEN` and requires appropriate Actions permissions. Signed update manifests, in-app update detection, and one-click installation remain planned.
+Status: Manual GitHub Actions releases target the public `ertanturan/sabl-pdf` repository. Offline What's New and manual/automatic release detection are implemented in separate stacked PRs. Signed update manifests, verified one-click installation and installer relaunch remain planned.
 
 ## Current state
 
