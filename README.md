@@ -41,10 +41,10 @@ The manually triggered GitHub release workflow increments the version automatica
 
 | Command | Example from `0.1.9` |
 | --- | --- |
-| `build.cmd` or `build.cmd -Minor` | `0.1.10` |
-| `build.cmd -Secondary` | `0.2.0` |
-| `build.cmd -Major` | `1.0.0` |
-| `build.cmd -NoVersionBump` | `0.1.9` |
+| GitHub Actions release: `minor` (default) | `0.1.10` |
+| GitHub Actions release: `secondary` | `0.2.0` |
+| GitHub Actions release: `major` | `1.0.0` |
+| `build.cmd` (normal local build) | `0.1.9` |
 
 The same flags work with `./scripts/build.ps1`. Run one flag at a time. Bumping synchronises `pyproject.toml`, the application version and the Inno Setup version before tests and packaging. The new version remains in the working tree, so commit these updates when preparing a release. A bump can remain even if a later packaging step fails.
 
