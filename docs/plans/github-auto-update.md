@@ -1,6 +1,6 @@
 # GitHub Releases auto-update plan
 
-Status: Planned. The updater, distribution repository and release publishing workflow do not yet exist.
+Status: The manually triggered Windows release workflow is implemented in this PR, but its public distribution repository and secrets must be configured. In-app update detection and one-click installation remain planned.
 
 ## Current state
 
