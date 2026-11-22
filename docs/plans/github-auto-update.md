@@ -12,7 +12,7 @@ SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds a
 
 - Automatically check for a newer stable release on launch, without blocking document opening, and no more than once every 24 hours thereafter.
 - Keep `Help > What's New` always available with offline notes for the installed version, including after updates. Add `Help > Check for updates` for an immediate manual check and a setting to disable automatic checks.
-- When an upgrade exists, show `Current vX.Y.Z`, `Available vA.B.C`, and only the four changelog sections for the new release, with `Update now`, `Later` and `Skip this version`.
+- When an upgrade exists, show `Current vX.Y.Z`, `Available vA.B.C`, and only the four changelog sections for the new release, with `Update now` and `Later`. Do not offer a permanent changelog-dismissal option.
 - One click starts download, verification and setup. Show progress, allow cancel before installer launch, preserve PDF documents and app settings, and reopen SABL after a successful install.
 - Show a clear error and manual release link when a check or update fails. Never block offline use or silently install or downgrade.
 
