@@ -95,3 +95,23 @@ def test_invalid_pdf_keeps_the_previous_document(session: DocumentSession, tmp_p
 
     assert session.path == original_path
     assert len(session.document) == 1
+
+def test_create_replaces_open_document(session: DocumentSession) -> None:
+    previous_document = session.document
+    session.mark_dirty()
+
+    session.create()
+
+    assert previous_document.is_closed
+    assert len(session.document) == 0
+    assert session.path is None
+    assert session.dirty is False
+    assert session.open_warnings is False
+
+
+def test_new_document_requires_destination_to_save() -> None:
+    session = DocumentSession()
+    session.create()
+
+    with pytest.raises(ValueError, match="Choose a destination"):
+        session.save()

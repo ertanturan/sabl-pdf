@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt, QRectF, Signal
+from PySide6.QtCore import Qt, QRectF, QTimer, Signal
 from PySide6.QtGui import QBrush, QColor, QImage, QPainterPath, QPen, QPixmap
 from PySide6.QtWidgets import QGraphicsScene, QGraphicsSimpleTextItem, QGraphicsView, QMenu
 
@@ -9,7 +9,7 @@ class PdfCanvas(QGraphicsView):
     area_selected = Signal(int, tuple)
     page_changed = Signal(int)
     selection_cancelled = Signal()
-    item_move_requested = Signal(int, int, tuple)
+    item_move_requested = Signal(int, int, int, tuple)
     item_delete_requested = Signal(int, int)
     copy_text_requested = Signal()
     redact_text_requested = Signal()
@@ -40,6 +40,11 @@ class PdfCanvas(QGraphicsView):
         self._drag_origin = None
         self._drag_rect = None
         self._dragging = False
+        self._drag_target_page: int | None = None
+        self._drag_viewport_position = None
+        self._drag_scroll_timer = QTimer(self)
+        self._drag_scroll_timer.setInterval(40)
+        self._drag_scroll_timer.timeout.connect(self._scroll_during_drag)
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
         self._ignore_context_menu = False
@@ -63,6 +68,7 @@ class PdfCanvas(QGraphicsView):
         self._placed_items = []
         self._drag_origin = None
         self._drag_rect = None
+        self._stop_drag_scroll()
         self._page_items.clear()
         self._page_rects = self._layout_pages(sizes)
         width = max((rect.right() for rect in self._page_rects), default=0)
@@ -334,29 +340,70 @@ class PdfCanvas(QGraphicsView):
         self._selected_item = None
         self._drag_origin = None
         self._drag_rect = None
+        self._drag_target_page = None
         self._dragging = False
+        self._stop_drag_scroll()
 
     def _drag_item(self, position) -> None:
         if self._selected_item is None or self._drag_rect is None:
             return
-        page = self._selected_item[0]
-        page_rect = self._page_rects[page]
+        target_page = self._page_at(position)
+        if target_page is None:
+            return
+        page_rect = self._page_rects[target_page]
+        if self._drag_rect.width() > page_rect.width() or self._drag_rect.height() > page_rect.height():
+            return
         delta = position - self._drag_origin
         dx = max(page_rect.left() - self._drag_rect.left(),
                  min(delta.x(), page_rect.right() - self._drag_rect.right()))
         dy = max(page_rect.top() - self._drag_rect.top(),
                  min(delta.y(), page_rect.bottom() - self._drag_rect.bottom()))
-        self._dragging = abs(dx) > 2 or abs(dy) > 2
+        self._drag_target_page = target_page
+        self._dragging = target_page != self._selected_item[0] or abs(dx) > 2 or abs(dy) > 2
         self._item_outline.setRect(self._drag_rect.translated(dx, dy))
 
-    def _finish_item_drag(self) -> None:
-        key = self._selected_item
-        if key is None or not self._dragging:
+    def _track_drag_pointer(self, position) -> None:
+        self._drag_viewport_position = position
+        if position.y() < 36 or position.y() > self.viewport().height() - 36:
+            self._drag_scroll_timer.start()
+        else:
+            self._drag_scroll_timer.stop()
+
+    def _scroll_during_drag(self) -> None:
+        position = self._drag_viewport_position
+        if self._drag_origin is None or position is None:
+            self._stop_drag_scroll()
             return
-        page, xref = key
-        page_rect = self._page_rects[page]
+        if position.y() < 36:
+            step = -24
+        elif position.y() > self.viewport().height() - 36:
+            step = 24
+        else:
+            self._stop_drag_scroll()
+            return
+        scrollbar = self.verticalScrollBar()
+        previous = scrollbar.value()
+        scrollbar.setValue(previous + step)
+        if scrollbar.value() == previous:
+            self._drag_scroll_timer.stop()
+        self._drag_item(self.mapToScene(position))
+
+    def _stop_drag_scroll(self) -> None:
+        self._drag_scroll_timer.stop()
+        self._drag_viewport_position = None
+
+    def _finish_item_drag(self, position) -> None:
+        key = self._selected_item
+        if key is None or self._drag_rect is None:
+            return
+        target_page = self._drag_target_page
+        if not self._dragging or self._page_at(position) != target_page:
+            self._item_outline.setRect(self._drag_rect)
+            return
+        source_page, xref = key
+        page_rect = self._page_rects[target_page]
         rect = self._item_outline.rect()
-        self.item_move_requested.emit(page, xref, (
+        self.item_move_requested.emit(source_page, xref, target_page, (
             (rect.left() - page_rect.left()) / self._zoom,
             (rect.top() - page_rect.top()) / self._zoom,
             (rect.right() - page_rect.left()) / self._zoom,
@@ -432,6 +479,7 @@ class PdfCanvas(QGraphicsView):
             if item is not None:
                 self._drag_origin = position
                 self._drag_rect = QRectF(item[2])
+                self._drag_target_page = item[0]
                 event.accept()
                 return
             page = self._page_at(position)
@@ -447,6 +495,7 @@ class PdfCanvas(QGraphicsView):
             event.accept()
             return
         if self._drag_origin is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            self._track_drag_pointer(event.position().toPoint())
             self._drag_item(self.mapToScene(event.position().toPoint()))
             event.accept()
             return
@@ -477,10 +526,13 @@ class PdfCanvas(QGraphicsView):
             event.accept()
             return
         if event.button() == Qt.MouseButton.LeftButton and self._drag_origin is not None:
-            self._drag_item(self.mapToScene(event.position().toPoint()))
-            self._finish_item_drag()
+            position = self.mapToScene(event.position().toPoint())
+            self._drag_item(position)
+            self._stop_drag_scroll()
+            self._finish_item_drag(position)
             self._drag_origin = None
             self._drag_rect = None
+            self._drag_target_page = None
             self._dragging = False
             event.accept()
             return
