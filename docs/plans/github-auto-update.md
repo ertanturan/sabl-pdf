@@ -1,12 +1,12 @@
 # GitHub Releases auto-update plan
 
-Status: The manually triggered Windows release workflow is implemented in this PR, but its public distribution repository and secrets must be configured. In-app update detection and one-click installation remain planned.
+Status: Manual GitHub Actions releases target the public `ertanturan/sabl-pdf` repository. The source workflow uses the built-in `GITHUB_TOKEN` and requires appropriate Actions permissions. Signed update manifests, in-app update detection, and one-click installation remain planned.
 
 ## Current state
 
-SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds an onedir executable; Inno Setup 6 builds `dist/installer/SABL-PDF-Setup.exe`. The `.github/workflows/installer.yml` job uses manual `workflow_dispatch` and an automatic selected version increment to build and stage/publish a versioned GitHub Release. Version `0.1.0` appears separately in `pyproject.toml`, `src/sabl_pdf/__init__.py` and `installer/SABL-PDF.iss`.
+SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds an onedir executable; Inno Setup 6 builds `dist/installer/SABL-PDF-Setup-vX.Y.Z-x64.exe`. The `.github/workflows/installer.yml` job uses manual `workflow_dispatch` and an automatic selected version increment to build and stage/publish a versioned GitHub Release. Version `0.1.0` appears separately in `pyproject.toml`, `src/sabl_pdf/__init__.py` and `installer/SABL-PDF.iss`.
 
-**Important distribution constraint:** the source repository, `ertanturan/sabl-pdf`, is private. Unauthenticated users cannot get release assets from a private GitHub repository. Keep source private and create a separate public binary-only repository, proposed name `ertanturan/sabl-pdf-releases`. Alternatively, the owner can make the source repository public before shipping. Never embed a GitHub access token or private-repository credential in the installed application.
+**Distribution:** `ertanturan/sabl-pdf` is public. Releases and installers belong in this same repository. No distribution-only repository or access token in the installed application is required.
 
 ## Desired experience
 
@@ -21,13 +21,15 @@ The app currently promises offline-first use: disclose that checking updates con
 ## System design
 
 ```text
-Private source repo: tagged tested commit + frozen release notes
-  -> Windows CI: test, package, sign, verify, upload
-  -> Public release repo: GitHub Release vX.Y.Z
+Public ertanturan/sabl-pdf: tagged source commit + frozen release notes
+  -> Windows CI: test, build, smoke-test, checksum, publish
+  -> GitHub Release vX.Y.Z in this repository
        - SABL-PDF-Setup-vX.Y.Z-x64.exe
-       - update-manifest.json
-       - update-manifest.json.sig
+       - SABL-PDF-Setup-vX.Y.Z-x64.exe.sha256
        - release notes for vX.Y.Z only
+
+Future one-click update delivery adds signed update-manifest.json(.sig)
+to the same release; signatures are not implemented yet.
 
 Installed SABL: Qt update checker
   -> public GitHub Releases API
@@ -42,15 +44,15 @@ Installed SABL: Qt update checker
 
 1. Use the changelog rules in `docs/plans/versioned-changelog.md`. A manually triggered workflow on `master` selects the next version (`minor` by default, or `secondary`/`major`), freezes that version's changelog, creates a versioned source commit and tag, and builds from that exact source state. The release-record PR must be merged manually before triggering another release. Require the project, tag, snapshot, application and installer versions to agree.
 2. Extend the existing Windows installer workflow to build, test and smoke-test the tagged release, bundle OCR data, then produce a **versioned** installer filename. Preserve the existing stable Inno `AppId` and installation scope to upgrade in place.
-3. Generate the manifest containing schema version, release SemVer, Windows x64 platform, installer asset name, size, SHA-256, minimum supported app version where applicable and release tag. Sign the manifest using a dedicated release signing key stored outside the source repository (protected CI secrets or an approved signing service). Embed only the trusted public verification key in SABL.
-4. Publish a draft public release with those assets and the frozen file `docs/changelog/releases/vX.Y.Z.md` as its **entire** body. Enable immutable releases in the public repository; publish only after every asset is attached and verified. Configure the stable release as the latest release. Do not publish a public source archive or sensitive build logs.
-5. A publish job needs short-lived, narrowly scoped authorization to the public distribution repository (prefer a GitHub App installation token). Release failures must never produce a partial public stable release. Keep the private source and public distribution tags traceable to the same commit and checksum.
+3. **Future updater prerequisite:** generate a signed update manifest containing release SemVer, platform, installer name, size, SHA-256, supported versions, and tag. Store the signing private key in protected CI secrets or a signing service and embed only its public key in SABL. The current manual release workflow publishes an installer and SHA-256 checksum, not a signed manifest.
+4. Publish a draft release in `ertanturan/sabl-pdf` using `docs/changelog/releases/vX.Y.Z.md` as its **entire** body. Enable immutable releases in this repository; publish after assets are attached and verified, and mark stable releases as latest. GitHub supplies source archives for releases of this public repository.
+5. Use the workflow's built-in `GITHUB_TOKEN` with `contents: write`, `pull-requests: write`, and `actions: write`. Configure repository Actions permissions to permit branch pushes, pull request creation, and explicit CI dispatch for the release-record branch. Publish only after a versioned source tag exists in the same repository. Failed runs must leave any incomplete release as a draft rather than a partial public stable release.
 6. Ordinary CI and local `build.cmd` builds must never auto-increment versions or publish GitHub Releases. Only the manual GitHub Actions release workflow may bump versions automatically and distribute the binary. Explicit local version bump flags remain available for development. The installer packaging step always passes `-NoVersionBump` to preserve the version prepared for that release. Existing CI artifacts are not substitutes for public release assets.
 
 ### Update checker
 
 - Implement a pure update-domain service under `src/sabl_pdf/services/` for SemVer comparison, manifest validation, platform compatibility and upgrade decisions; inject a network/clock interface so tests run offline.
-- Use nonblocking Qt networking in the UI coordinator. Query the **public** repository's `/repos/ertanturan/sabl-pdf-releases/releases/latest` endpoint; handle 404/no releases, limits, TLS, timeouts and malformed responses. Prefer ETag conditional requests and a 24-hour cache. Skip drafts and prereleases.
+- Use nonblocking Qt networking in the UI coordinator. Query `/repos/ertanturan/sabl-pdf/releases/latest`; handle 404/no releases, limits, TLS, timeouts, and malformed responses. Prefer ETag conditional requests and a 24-hour cache. Skip drafts and prereleases.
 - Reject versions less than or equal to the installed version, non-`vMAJOR.MINOR.PATCH` tags, unknown architectures, or missing manifest/installer assets. Do not infer a download URL from an arbitrary release description.
 - Use release-specific GitHub body text for the update dialog, never the cumulative `CHANGELOG.md`. Validate/limit displayed Markdown and never execute links or scripts from it.
 - Keep a single update check/download active, support user cancellation, and remember a skipped version. Manual checks bypass the 24-hour automatic-check limit.
@@ -93,4 +95,4 @@ Do not enable one-click installation until signature and recovery tests pass. Ea
 - [GitHub immutable releases](https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases)
 - [GitHub releases API](https://docs.github.com/en/rest/releases/releases)
 
-This plan does not create the distribution repository, publish a release, or change the shipped application.
+The release workflow is manually triggered and publishes installers in the existing public source repository. This plan does not implement or enable the in-app updater.
