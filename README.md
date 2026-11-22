@@ -65,7 +65,7 @@ After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen.
 
 ### Build and OCR prerequisites
 
-- Install **Inno Setup 6** before running `build.cmd`. The installer is written to `dist/installer/SABL-PDF-Setup.exe`.
+- Install **Inno Setup 6** before running `build.cmd`. The installer is written to `dist/installer/SABL-PDF-Setup-vX.Y.Z-x64.exe` using the checked-out version.
 - **OCR requires Tesseract.** PyMuPDF uses the Tesseract engine built into MuPDF, but needs Tesseract language data (`eng.traineddata` for English). For source runs, install Tesseract OCR with English language data and, if PyMuPDF cannot locate it, set `TESSDATA_PREFIX` to the folder containing `eng.traineddata` (for example, `C:\Program Files\Tesseract-OCR\tessdata`). The Tesseract command-line executable is not called when the data path is provided.
 - For a local installer build, put `eng.traineddata` in `installer/tessdata/` before building. The tagged-release workflow downloads this file for its installer build.
 
