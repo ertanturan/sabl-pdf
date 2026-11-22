@@ -14,6 +14,7 @@ on:
           - major
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -26,8 +27,6 @@ jobs:
     if: github.ref == 'refs/heads/master'
     runs-on: windows-latest
     timeout-minutes: 90
-    env:
-      PUBLIC_RELEASE_REPO: ertanturan/sabl-pdf-releases
     steps:
       - uses: actions/checkout@v4
         with:
@@ -35,20 +34,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Check public release repository
+      - name: Verify public source repository
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if (-not $env:GH_TOKEN) { throw 'Set PUBLIC_RELEASE_TOKEN with Contents write access to the public binary release repository.' }
-          $visibility = gh repo view $env:PUBLIC_RELEASE_REPO --json visibility --jq '.visibility'
-          if ($LASTEXITCODE -ne 0 -or $visibility -ne 'PUBLIC') { throw 'Create the public sabl-pdf-releases repository first.' }
+          $visibility = gh repo view $env:GITHUB_REPOSITORY --json visibility --jq '.visibility'
+          if ($LASTEXITCODE -ne 0 -or $visibility -ne 'PUBLIC') { throw 'Releases require the source repository to be public.' }
       - name: Prepare version and changelog
         id: version
         shell: pwsh
         env:
           BUMP_PART: ${{ inputs.bump }}
-          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           $version = python scripts/release.py prepare --part $env:BUMP_PART
           if ($LASTEXITCODE -ne 0) { throw 'Release preparation failed.' }
@@ -56,7 +54,7 @@ jobs:
           $tag = "v$version"
           git show-ref --verify --quiet "refs/tags/$tag"
           if ($LASTEXITCODE -eq 0) { throw "Tag $tag already exists." }
-          gh release view $tag -R $env:PUBLIC_RELEASE_REPO *> $null
+          gh release view $tag -R $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) { throw "Public release $tag already exists." }
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
@@ -115,25 +113,13 @@ jobs:
             ${{ steps.asset.outputs.installer }}
             ${{ steps.asset.outputs.checksum }}
           if-no-files-found: error
-      - name: Stage public release as draft
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
-          TAG: ${{ steps.version.outputs.tag }}
-          INSTALLER: ${{ steps.asset.outputs.installer }}
-          CHECKSUM: ${{ steps.asset.outputs.checksum }}
-        run: |
-          $notes = "docs/changelog/releases/$env:TAG.md"
-          gh release create $env:TAG $env:INSTALLER $env:CHECKSUM -R $env:PUBLIC_RELEASE_REPO --draft --title "SABL PDF $env:TAG" --notes-file $notes
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot stage public GitHub Release.' }
       - name: Push release record and open PR
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.SOURCE_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
           RELEASE_BRANCH: ${{ steps.version.outputs.branch }}
         run: |
-          if (-not $env:GH_TOKEN) { throw 'Set SOURCE_RELEASE_TOKEN with Pull requests write permission to the private repository.' }
           git push origin "HEAD:refs/heads/$env:RELEASE_BRANCH"
           if ($LASTEXITCODE -ne 0) { throw 'Cannot push release branch.' }
           git push origin "refs/tags/$env:TAG"
@@ -145,12 +131,25 @@ jobs:
             '## Stack', "- Head: $env:RELEASE_BRANCH", '- Base: master', '- Previous PR: none. Merge manually before another release.'
           ) -join [Environment]::NewLine
           gh pr create -R $env:GITHUB_REPOSITORY --base master --head $env:RELEASE_BRANCH --title "release: record $env:TAG" --body $body
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot create release PR. Public release remains a draft.' }
-      - name: Publish the release
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot create release PR.' }
+          gh workflow run ci.yml --ref $env:RELEASE_BRANCH -R $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot trigger checks for the release record PR.' }
+      - name: Stage GitHub Release as draft
         shell: pwsh
         env:
-          GH_TOKEN: ${{ secrets.PUBLIC_RELEASE_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          INSTALLER: ${{ steps.asset.outputs.installer }}
+          CHECKSUM: ${{ steps.asset.outputs.checksum }}
+        run: |
+          $notes = "docs/changelog/releases/$env:TAG.md"
+          gh release create $env:TAG $env:INSTALLER $env:CHECKSUM -R $env:GITHUB_REPOSITORY --draft --title "SABL PDF $env:TAG" --notes-file $notes
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot stage GitHub Release.' }
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          gh release edit $env:TAG -R $env:PUBLIC_RELEASE_REPO --draft=false --latest
-          if ($LASTEXITCODE -ne 0) { throw 'Public release remains a draft; resolve the error.' }
+          gh release edit $env:TAG -R $env:GITHUB_REPOSITORY --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Release remains a draft; resolve the error.' }
