@@ -6,7 +6,7 @@
 - One-purpose workflows and a simple, accessible interface.
 - An installer registers the app as a PDF handler. Windows controls the user's default PDF app selection; never bypass the default-app consent mechanism.
 
-## README maintenance
+## README hygiene
 - Keep `README.md` accurate to features shipped on the target branch. Do not present backlog items or open PRs as available functionality.
 - Update it in the same PR when user-visible features, requirements, commands, installation steps or known limitations change.
 - Explain how to run, test and build the app with verified paths, prerequisites and expected outputs. Document material limitations and safety caveats.
