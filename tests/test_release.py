@@ -181,3 +181,37 @@ def test_release_formats_version_and_date() -> None:
     notes = format_notes(version, NOTES, "2026-11-22")
 
     assert notes.startswith("# v0.1.10 (2026-11-22)")
+
+
+def test_published_changelog_cannot_be_deleted(release_root: Path) -> None:
+    prepare_release(release_root, "minor", "2026-11-22")
+    git(release_root, "add", ".")
+    git(release_root, "commit", "-qm", "release")
+    git(release_root, "tag", "v0.1.1")
+    (release_root / "docs/changelog/releases/v0.1.1.md").unlink()
+
+    with pytest.raises(ValueError, match="Published changelog cannot change"):
+        verify_history(release_root)
+
+
+def test_cumulative_history_cannot_be_rewritten(release_root: Path) -> None:
+    prepare_release(release_root, "minor", "2026-11-22")
+    git(release_root, "add", ".")
+    git(release_root, "commit", "-qm", "release")
+    git(release_root, "tag", "v0.1.1")
+    (release_root / "CHANGELOG.md").write_text("# rewritten\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="CHANGELOG.md"):
+        verify_history(release_root)
+
+
+def test_release_rejects_unpublished_snapshot(release_root: Path) -> None:
+    notes = release_root / "docs/changelog/releases/v0.1.1.md"
+    notes.parent.mkdir(parents=True)
+    notes.write_text(format_notes("0.1.1", NOTES, "2026-11-22"), encoding="utf-8")
+    (release_root / "CHANGELOG.md").write_text(
+        generate_history(release_root), encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError, match="no published tag"):
+        verify_history(release_root)
