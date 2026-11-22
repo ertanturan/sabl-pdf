@@ -538,6 +538,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         callback: Callable[[tuple], None],
         click_size: tuple[float, float] | None = None,
         preview_strokes: list[list[tuple[float, float]]] | None = None,
+        preview_label: str | None = None,
+        preview_image: str | None = None,
         tool_name: str = "Select area",
     ) -> None:
         if not self._require_document():
@@ -545,7 +547,9 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._selection_action = callback
         self.canvas.clear_item_selection()
         self._set_active_tool(tool_name)
-        self.canvas.set_selection_enabled(True, click_size, preview_strokes)
+        self.canvas.set_selection_enabled(
+            True, click_size, preview_strokes, preview_label, preview_image
+        )
         self.status.setText(
             "Click to place or drag to size; right-click to cancel"
             if click_size else "Drag a rectangle on the page; right-click to cancel"

@@ -19,6 +19,7 @@ class SignatureActions:
                     self._after_edit(),
                 ),
                 click_size=(180, 70),
+                preview_image=filename,
                 tool_name="Sign",
             )
 

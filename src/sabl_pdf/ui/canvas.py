@@ -2,7 +2,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import Qt, QRectF, Signal
 from PySide6.QtGui import QBrush, QColor, QImage, QPainterPath, QPen, QPixmap
-from PySide6.QtWidgets import QGraphicsScene, QGraphicsView, QMenu
+from PySide6.QtWidgets import QGraphicsScene, QGraphicsSimpleTextItem, QGraphicsView, QMenu
 
 
 class PdfCanvas(QGraphicsView):
@@ -34,6 +34,8 @@ class PdfCanvas(QGraphicsView):
         self._drag_rect = None
         self._dragging = False
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setMouseTracking(True)
+        self._ignore_context_menu = False
         self.setBackgroundBrush(QBrush(QColor("#eaeaea")))
         self.verticalScrollBar().valueChanged.connect(self._viewport_changed)
         self.horizontalScrollBar().valueChanged.connect(self._viewport_changed)
@@ -124,6 +126,8 @@ class PdfCanvas(QGraphicsView):
         enabled: bool,
         click_size: tuple[float, float] | None = None,
         preview_strokes: list[list[tuple[float, float]]] | None = None,
+        preview_label: str | None = None,
+        preview_image: str | None = None,
     ) -> None:
         self._remove_preview()
         self._selection_enabled = enabled
@@ -131,8 +135,14 @@ class PdfCanvas(QGraphicsView):
         self._origin = None
         self._origin_page = None
         self.setCursor(Qt.CursorShape.CrossCursor if enabled else Qt.CursorShape.ArrowCursor)
-        if enabled and click_size and preview_strokes:
+        if not enabled:
+            return
+        if click_size and preview_strokes:
             self._add_signature_preview(click_size, preview_strokes)
+        elif click_size and preview_image:
+            self._add_image_preview(click_size, preview_image)
+        elif preview_label:
+            self._add_label_preview(click_size or (90, 26), preview_label)
 
     def _remove_preview(self) -> None:
         if self._preview_item is not None:
@@ -150,17 +160,62 @@ class PdfCanvas(QGraphicsView):
             path.moveTo(stroke[0][0] * width * self._zoom, stroke[0][1] * height * self._zoom)
             for x, y in stroke[1:]:
                 path.lineTo(x * width * self._zoom, y * height * self._zoom)
-        self._preview_item = self._scene.addPath(path, QPen(QColor("#2775cc"), 2))
+        self._preview_item = self._scene.addPath(path, QPen(QColor("#202020"), 1.4 * self._zoom))
         self._preview_item.setZValue(10)
         self._preview_item.hide()
+
+    def _add_label_preview(self, size: tuple[float, float], label: str) -> None:
+        width, height = size
+        self._preview_item = self._scene.addRect(
+            QRectF(0, 0, width * self._zoom, height * self._zoom),
+            QPen(QColor("#2775cc"), 1.5, Qt.PenStyle.DashLine),
+            QBrush(QColor(255, 255, 255, 175)),
+        )
+        caption = QGraphicsSimpleTextItem(label, self._preview_item)
+        caption.setBrush(QBrush(QColor("#202020")))
+        caption.setPos(3, 2)
+        self._preview_item.setZValue(10)
+        self._preview_item.setOpacity(0.75)
+        self._preview_item.hide()
+
+    def _add_image_preview(self, size: tuple[float, float], image: str) -> None:
+        width, height = size
+        pixmap = QPixmap(image).scaled(
+            max(1, round(width * self._zoom)),
+            max(1, round(height * self._zoom)),
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+        if pixmap.isNull():
+            self._add_label_preview(size, "Signature")
+            return
+        self._preview_item = self._scene.addPixmap(pixmap)
+        self._preview_item.setOpacity(0.7)
+        self._preview_item.setZValue(10)
+        self._preview_item.hide()
+
+    def _placement_anchor(self, page: int, position):
+        if self._click_size is None:
+            return position
+        bounds = self._page_rects[page]
+        width = self._click_size[0] * self._zoom
+        height = self._click_size[1] * self._zoom
+        x = max(bounds.left(), min(position.x(), bounds.right() - width))
+        y = max(bounds.top(), min(position.y(), bounds.bottom() - height))
+        return type(position)(x, y)
 
     def _move_preview(self, position) -> None:
         if self._preview_item is None:
             return
         page = self._page_at(position)
-        self._preview_item.setVisible(page is not None)
+        self._preview_item.setVisible(page is not None and self._origin is None)
         if page is not None:
-            self._preview_item.setPos(position)
+            self._preview_item.setPos(self._placement_anchor(page, position))
+
+    def leaveEvent(self, event) -> None:
+        if self._preview_item is not None:
+            self._preview_item.hide()
+        super().leaveEvent(event)
 
     def clear_search_highlight(self) -> None:
         if self._search_highlight is not None:
@@ -271,6 +326,10 @@ class PdfCanvas(QGraphicsView):
         super().keyPressEvent(event)
 
     def contextMenuEvent(self, event) -> None:
+        if self._ignore_context_menu:
+            self._ignore_context_menu = False
+            event.accept()
+            return
         if self._selection_enabled:
             event.accept()
             return
@@ -285,6 +344,7 @@ class PdfCanvas(QGraphicsView):
 
     def mousePressEvent(self, event) -> None:
         if self._selection_enabled and event.button() == Qt.MouseButton.RightButton:
+            self._ignore_context_menu = True
             self._cancel_selection()
             event.accept()
             return
@@ -351,8 +411,9 @@ class PdfCanvas(QGraphicsView):
             rect = QRectF(self._origin, end).normalized().intersected(page_rect)
             if rect.width() < 2 and rect.height() < 2 and self._click_size is not None:
                 width, height = self._click_size
+                anchor = self._placement_anchor(page_index, end)
                 rect = QRectF(
-                    end.x(), end.y(), width * self._zoom, height * self._zoom
+                    anchor.x(), anchor.y(), width * self._zoom, height * self._zoom
                 ).intersected(page_rect)
             if self._rubber_band is not None:
                 self._scene.removeItem(self._rubber_band)

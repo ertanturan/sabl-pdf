@@ -19,6 +19,8 @@
 - New placement tools must use the shared placed-item service and canvas interaction model.
 - Do not flatten newly placed items into uneditable page content; preserve editable PDF annotations.
 - Add selection, drag, deletion, and persistence regression tests when adding new item types.
+- Every placement tool must show a cursor-following preview before commit; make its size and landing position match the saved PDF item.
+- Right-click and Escape must cancel an uncommitted placement without changing the document.
 
 ## Testing
 - Implement unit tests for each feature or bugfix in the same PR.
