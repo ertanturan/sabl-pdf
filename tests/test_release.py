@@ -144,6 +144,14 @@ def test_release_rejects_empty_changelog(release_root: Path) -> None:
         prepare_release(release_root, "minor", "2026-11-22")
 
 
+def test_release_rejects_overlong_bullet() -> None:
+    long_note = "- " + ("a" * 99)
+    notes = NOTES.replace("- Add instructions for creating a release.", long_note)
+
+    with pytest.raises(ValueError, match="at most 100 characters"):
+        validate_notes(notes)
+
+
 def test_release_rejects_invalid_category_order() -> None:
     reordered = NOTES.replace("## Bugfixes", "## Corrections")
 
