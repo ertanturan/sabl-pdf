@@ -8,6 +8,7 @@ from sabl_pdf.services.compression import CompressionService
 from sabl_pdf.services.conversion import ConversionService
 from sabl_pdf.services.forms import FormService
 from sabl_pdf.services.ocr import OcrService
+from sabl_pdf.services.redaction import RedactionService
 from sabl_pdf.services.placed_items import PlacedItemService
 from sabl_pdf.services.pages import PageService
 from sabl_pdf.services.signatures import SignatureService
@@ -30,6 +31,7 @@ class DocumentTab(QWidget):
         self.compression = CompressionService(session)
         self.conversion = ConversionService(session)
         self.ocr = OcrService(session)
+        self.redaction = RedactionService(session)
         self.page_index = 0
         self.zoom = 1.0
         self.selection_action: Callable[[tuple], None] | None = None
