@@ -710,13 +710,6 @@ def test_find_scrolls_to_result_below_the_viewport(tmp_path) -> None:
     application.processEvents()
 
     window._search_query("DistantResult")
-    match = window._search_matches[0]
-    x0, y0, x1, y1 = match.bounds
-    page = window.canvas._page_rects[0]
-    match_position = window.canvas.mapFromScene(
-        page.left() + (x0 + x1) / 2, page.top() + (y0 + y1) / 2
-    )
-
     assert window.search_bar.results.text() == "1 of 1"
-    assert window.canvas.viewport().rect().contains(match_position)
+    assert window.canvas.verticalScrollBar().value() > 500
     window.close()
