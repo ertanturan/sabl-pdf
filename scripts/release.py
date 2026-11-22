@@ -103,10 +103,10 @@ def previous_snapshots_unchanged(root: Path) -> None:
 
 
 def verify_history(root: Path) -> None:
-    if not (root / RELEASES).exists():
-        return
     previous_snapshots_unchanged(root)
     history = root / HISTORY
+    if not snapshot_files(root) and not history.exists():
+        return
     if not history.exists() or history.read_text(encoding="utf-8") != generate_history(root):
         raise ValueError("CHANGELOG.md must match the unmodified version snapshots")
 
