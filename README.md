@@ -24,12 +24,14 @@ Requires Python 3.12+ installed and available through `py` or `python`. Double-c
 | File | Action |
 | --- | --- |
 | `run.cmd` | Create or reuse `.venv`, install dependencies, and open SABL PDF. |
-| `test.cmd` | Prepare the environment, run pytest, compile Python files, and run Ruff. |
+| `test.cmd` | Prepare the environment, run pytest, compile Python files, and run Ruff and Pyright. |
 | `build.cmd` | Run all checks, package the app with PyInstaller, and create the Windows installer. |
 
 `build.cmd` requires Inno Setup 6. The installer output is in `dist/installer`.
 
 To run the same tasks from PowerShell, use `./scripts/run.ps1`, `./scripts/test.ps1`, or `./scripts/build.ps1`. A double-click on a `.ps1` file normally opens an editor on Windows, so the `.cmd` launchers invoke the scripts with a process-scoped execution policy. No permanent PowerShell policy change is made. Tests use Qt offscreen mode without affecting the normal app launcher.
+
+The type check also runs directly with `python -m pyright` after installing `.[dev]`.
 
 For OCR in a source checkout, install Tesseract `eng.traineddata` or provide a valid `TESSDATA_PREFIX`. Release installers include English OCR data.
 
