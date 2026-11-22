@@ -48,18 +48,16 @@ The manually triggered GitHub release workflow increments the version automatica
 
 ### Publish a Windows installer
 
-The release action is **manual only**. After this workflow is merged into `master`:
+Releases are created in this public repository at [GitHub Releases](https://github.com/ertanturan/sabl-pdf/releases). The installer workflow runs **only when manually triggered**, not on normal pushes or merges.
 
-1. Create a separate **public** repository called `ertanturan/sabl-pdf-releases`; the SABL source repository is private.
-2. Add two GitHub Actions secrets to the private source repository: `PUBLIC_RELEASE_TOKEN`, a fine-grained token with Contents read/write for the public releases repository; and `SOURCE_RELEASE_TOKEN`, a fine-grained token with Pull requests read/write for the private source repository. Grant the source workflow `contents: write` permission so it can push a versioned branch and tag. Repository rules must permit those pushes. The source token lets release-record PRs trigger required CI checks.
-3. Edit `docs/changelog/current.md` on `master` to describe what is shipping. Use the four required categories.
-4. Open **Actions > Publish Windows installer > Run workflow** on the `master` branch and choose `minor`, `secondary` or `major`. The default is `minor`.
-5. GitHub validates changelog history, increases the selected component, runs the tests, builds and smoke-tests the installer, generates its SHA-256 checksum, and publishes a versioned installer with only this release's notes to the public distribution repository.
-6. GitHub opens a release-record PR back to the private source repository. **Merge this PR manually before starting another release**, keeping project versions and changelog history in sync.
+1. In **Settings > Actions > General**, enable GitHub Actions workflow **Read and write permissions** and **Allow GitHub Actions to create and approve pull requests**. The release workflow uses the built-in `GITHUB_TOKEN`; no personal access token or second repository is needed.
+2. Make sure branch and tag rules permit GitHub Actions to create `release/vX.Y.Z` branches and `vX.Y.Z` tags. The workflow never pushes directly to `master`.
+3. Review and update `docs/changelog/current.md` on `master` using the four required categories. Each bullet is limited to 100 characters.
+4. Open **Actions > Publish Windows installer > Run workflow** on `master`. Choose `minor` (default), `secondary`, or `major`.
+5. GitHub bumps the selected version, freezes its changelog, tests and smoke-tests the Windows installer, then publishes the installer, checksum, and release notes to this repository's Releases page.
+6. GitHub opens a release-record PR and explicitly starts its CI checks. **Merge that PR manually before the next release** so `master` matches the published version.
 
-A failed workflow does not publish a successful release automatically; a staged draft or release branch may require manual inspection. Check the run's results before sharing a download.
-
-A local `build.cmd` does not publish a release or increment any component by default. For an explicit local version change, `build.cmd -Minor`, `build.cmd -Secondary` or `build.cmd -Major` remain available, and `build.cmd -NoVersionBump` explicitly preserves the version. A local change must be committed through a PR before an official GitHub release. The tagged source commit and release snapshots must stay unchanged.
+If a release run fails, check its logs and inspect any leftover draft release or branch before retrying. Existing local builds remain version-neutral unless you pass `-Minor`, `-Secondary`, or `-Major`; they do not publish releases.
 
 After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen. Use **Ctrl+F** to search, **Ctrl+S** to save, or **File > Save as** to write a separate copy.
 
