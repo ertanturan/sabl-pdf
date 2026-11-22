@@ -163,23 +163,27 @@ Size: M = moderate; L = large; XL = particularly complex. Priorities indicate im
 
 ## REDACT-01: Permanent redaction
 
-**User experience**
-- Mark rectangular areas or search for specific text, review every match, then Apply Redactions.
-- Show a clear warning that redaction permanently removes underlying content in the saved copy.
-- Save a separate redacted PDF and display a verification result.
+**Detailed plan:** [Secure redaction implementation plan](docs/plans/redaction.md)
 
-**Implementation**
-- Use actual content redaction (`Page.add_redact_annot()` and `Page.apply_redactions()`), not an opaque rectangle overlay.
-- Explicitly define handling for images, vector paths, annotations, form values, metadata and embedded files.
-- Produce a full rewritten output without source revision history; never use incremental save for a redacted copy.
-- Reopen and inspect the result for surviving targeted text, images and other recoverable copies. Fail closed if verification is incomplete.
-- Require explicit consent or refuse when signed or protected documents cannot be safely rewritten.
+**User experience**
+- Search for a phrase through a popup, find and preview occurrences across the PDF, review selections and export a verified redacted copy.
+- Select existing PDF text, right-click and choose **Redact selection**.
+- Select a page rectangle, right-click and choose **Redact area**.
+- Show a clear warning that content is permanently removed from the exported copy; confirm before applying.
+
+**Security and implementation**
+- Use real PyMuPDF content redaction, not opaque overlays.
+- Support image/scanned text and OCR layers, with explicit refusal when uncertain.
+- Clean metadata, attachments, forms, annotations, reused/hidden content and historic PDF revisions or fail closed.
+- Save a newly rewritten copy, never incrementally; verify with independent inspection before publishing.
+- Never claim the source, backups or other copies are erased.
+- Build in focused stacked PRs with text-selection geometry, matching, safe application, validation and end-to-end UI tests.
 
 **Acceptance**
-- Redacted text cannot be found by search, copy/paste, extraction or inspecting prior incremental revisions in the output.
-- Targeted areas are removed from text, OCR layers and visible imagery as appropriate.
-- Incomplete verification prevents a success message.
-- Tests cover underlying text, scanned images, shared resources, forms, metadata, protected/signed PDFs and repeated saves.
+- Redacted information cannot be recovered from text extraction, rendering, form data, hidden objects or prior revisions of the *output PDF*.
+- Saved output is only marked verified after successful full reopen and inspection.
+- Search preview and both right-click workflows target the same underlying secure-redaction implementation.
+- Unsupported PDF constructs, incomplete OCR coverage or unverifiable output block any success claim.
 
 ## TEXT-01: Advanced editing of existing PDF text
 
