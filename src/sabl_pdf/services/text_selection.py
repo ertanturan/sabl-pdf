@@ -72,10 +72,7 @@ class TextSelectionService:
         if require_near and distance(glyphs[index]) > 25:
             return None
         bounds = fitz.Rect(glyphs[index].bounds)
-        horizontal = bounds.width >= bounds.height / 2
-        after = point.x >= (bounds.x0 + bounds.x1) / 2 if horizontal else point.y >= (
-            bounds.y0 + bounds.y1
-        ) / 2
+        after = point.x >= (bounds.x0 + bounds.x1) / 2
         return index + int(after)
 
     def _line_rects(
