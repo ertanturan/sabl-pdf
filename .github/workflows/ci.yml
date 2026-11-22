@@ -4,8 +4,27 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
 jobs:
+  merge-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Reject conflicting pull requests
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python scripts/check_pr_merge.py
   unit-tests:
+    needs: merge-check
+    if: needs.merge-check.result == 'success'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
