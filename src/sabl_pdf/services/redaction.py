@@ -35,7 +35,7 @@ class RedactionService:
         for index, page in enumerate(self._session.document):
             native = page.search_for(phrase)
             matches.extend(RedactionTarget(index, tuple(rect), phrase) for rect in native)
-            if not page.get_text("text").strip() and page.get_images(full=True):
+            if page.get_image_info():
                 try:
                     ocr = page.get_textpage_ocr(language="eng", full=True)
                     hits = page.search_for(phrase, textpage=ocr)
@@ -44,7 +44,9 @@ class RedactionService:
                         "A scanned page could not be searched with OCR. "
                         "Redact it by selecting an area instead."
                     ) from exc
-                matches.extend(RedactionTarget(index, tuple(rect), phrase) for rect in hits)
+                for rect in hits:
+                    if not any(fitz.Rect(existing).intersects(rect) for existing in native):
+                        matches.append(RedactionTarget(index, tuple(rect), phrase))
         return matches
 
     def area_target(self, page_index: int, display_bounds: tuple) -> RedactionTarget:
@@ -124,8 +126,8 @@ class RedactionService:
             touched.add(target.page)
         for index in sorted(touched):
             document[index].apply_redactions(
-                images=fitz.PDF_REDACT_IMAGE_REMOVE,
-                graphics=fitz.PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED,
+                images=fitz.PDF_REDACT_IMAGE_PIXELS,
+                graphics=fitz.PDF_REDACT_LINE_ART_REMOVE_IF_COVERED,
                 text=fitz.PDF_REDACT_TEXT_REMOVE,
             )
 
