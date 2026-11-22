@@ -37,7 +37,7 @@ Use `- None.` in an empty section. Entries must say what changed, not promise fu
 ## Working rules
 
 1. During development, edit only `current.md`, assigning each relevant change to exactly one of the four categories and linking its PR. A commit touching multiple categories may have separate entries. Do not invent performance claims.
-2. Keep one shared version source, `pyproject.toml`; build tooling must derive the executable version, Python package version, installer version and release tag from it. Use SemVer tags `vMAJOR.MINOR.PATCH`.
+2. Keep one shared version source, `pyproject.toml`; the local build script synchronises its version with the Python package and Inno Setup installer. Normal local builds increment `z` in `x.y.z`; `-Secondary` increments `y` and resets `z`, while `-Major` increments `x` and resets `y.z`. Tagged builds use `-NoVersionBump` and validate the existing tag. Use SemVer tags `vMAJOR.MINOR.PATCH` (the user's local names are major, secondary and minor).
 3. When preparing a release, validate the draft and version, freeze it as `releases/vX.Y.Z.md`, and regenerate `CHANGELOG.md` from all snapshots without changing any prior section's bytes.
 4. Build and test the exact tagged commit; publish the matching release only after checks and a Windows installer smoke test pass. GitHub release notes come solely from `releases/vX.Y.Z.md`.
 5. Once a version is published, lock its snapshot and release metadata. Never modify any earlier version entry in any PR, branch or agent task.
