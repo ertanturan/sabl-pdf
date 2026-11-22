@@ -2,7 +2,7 @@
 
 ## Product
 - Windows-only desktop application built with Python 3.12+, PySide6 and PyMuPDF.
-- All user-facing app, dialog, installer, release and Windows integration names use `Simple PDF`. Keep stable internal package, settings and PDF ProgID identifiers for compatibility.
+- All user-facing app, dialog, CLI, installer, release and Windows integration names use `Simple PDF`. Keep stable internal package, settings and PDF ProgID identifiers for compatibility.
 - Offline-first, no login, subscriptions, advertisements, telemetry or online services.
 - One-purpose workflows and a simple, accessible interface.
 - An installer registers the app as a PDF handler. Windows controls the user's default PDF app selection; never bypass the default-app consent mechanism.

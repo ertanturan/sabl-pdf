@@ -13,6 +13,7 @@ dependencies = ["PyMuPDF>=1.25,<2", "PySide6>=6.8,<7", "Pillow>=11,<13"]
 dev = ["pytest>=8", "pytest-cov>=6", "ruff>=0.9", "pyright>=1.1.400,<2", "pyinstaller>=6.11"]
 
 [project.scripts]
+simple-pdf = "sabl_pdf.main:main"
 sabl-pdf = "sabl_pdf.main:main"
 
 [tool.setuptools.packages.find]

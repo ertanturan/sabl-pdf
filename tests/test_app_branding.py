@@ -1,3 +1,4 @@
+import tomllib
 import os
 from pathlib import Path
 from unittest.mock import Mock
@@ -87,3 +88,12 @@ def test_release_workflow_smoke_tests_simple_pdf_name() -> None:
     assert '$filename = "Simple-PDF-Setup-$env:TAG-x64.exe"' in workflow
     assert "'Simple PDF.exe'" in workflow
     assert '--title "Simple PDF $env:TAG"' in workflow
+
+
+def test_console_command_offers_simple_pdf_with_legacy_alias() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    scripts = project["project"]["scripts"]
+
+    assert scripts["simple-pdf"] == "sabl_pdf.main:main"
+    assert scripts["sabl-pdf"] == "sabl_pdf.main:main"

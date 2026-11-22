@@ -34,6 +34,8 @@ Requires **Python 3.12+** available as `py` or `python`. From a checkout, double
 | `test.cmd` | Prepares the environment, then runs pytest, Python compilation and Ruff. |
 | `build.cmd` | Checks the existing version, runs tests, builds with PyInstaller and creates the Windows installer. |
 
+Python package installations also provide the `simple-pdf` command; `sabl-pdf` remains an alias for compatibility.
+
 The PowerShell equivalents are `./scripts/run.ps1`, `./scripts/test.ps1` and `./scripts/build.ps1`. The `.cmd` launchers are intended for double-clicking; they invoke PowerShell without requiring a permanent execution-policy change. Tests use Qt offscreen mode.
 
 ### Build version numbers
