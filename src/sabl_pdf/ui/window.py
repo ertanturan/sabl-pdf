@@ -5,6 +5,9 @@ from PySide6.QtCore import QSettings, QSize, Qt
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget
 
+from sabl_pdf import __version__
+from sabl_pdf.services.release_notes import installed_release_notes
+from sabl_pdf.ui.whats_new_dialog import WhatsNewDialog
 from sabl_pdf.core.session import DocumentSession
 from sabl_pdf.services.viewer import SearchMatch, ViewerService
 from sabl_pdf.ui.canvas import PdfCanvas
@@ -145,7 +148,12 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(tools, "Export pages as images", self.export_images)
         self._action(tools, "OCR current page", self.ocr_page)
         self._action(tools, "Export OCR text", self.export_ocr)
+        help_menu = self.menuBar().addMenu("Help")
+        self.whats_new_action = help_menu.addAction("What's New")
+        self.whats_new_action.triggered.connect(self.show_whats_new)
 
+    def show_whats_new(self) -> None:
+        WhatsNewDialog(__version__, installed_release_notes(), self).exec()
 
     def _connect_tab(self, tab: DocumentTab) -> None:
         tab.canvas.area_selected.connect(
