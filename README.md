@@ -51,7 +51,7 @@ The manually triggered GitHub release workflow increments the version automatica
 The release action is **manual only**. After this workflow is merged into `master`:
 
 1. Create a separate **public** repository called `ertanturan/sabl-pdf-releases`; the SABL source repository is private.
-2. Add a GitHub Actions secret called `PUBLIC_RELEASE_TOKEN` to the private source repository. Use a fine-grained token with Contents read/write permission limited to the public releases repository. Allow GitHub Actions to create PRs, and ensure repository rules allow the release bot to push release branches and tags.
+2. Add two GitHub Actions secrets to the private source repository: `PUBLIC_RELEASE_TOKEN`, a fine-grained token with Contents read/write for the public releases repository; and `SOURCE_RELEASE_TOKEN`, a fine-grained token with Pull requests read/write for the private source repository. Grant the source workflow `contents: write` permission so it can push a versioned branch and tag. Repository rules must permit those pushes. The source token lets release-record PRs trigger required CI checks.
 3. Edit `docs/changelog/current.md` on `master` to describe what is shipping. Use the four required categories.
 4. Open **Actions > Publish Windows installer > Run workflow** on the `master` branch and choose `minor`, `secondary` or `major`. The default is `minor`.
 5. GitHub validates changelog history, increases the selected component, runs the tests, builds and smoke-tests the installer, generates its SHA-256 checksum, and publishes a versioned installer with only this release's notes to the public distribution repository.
