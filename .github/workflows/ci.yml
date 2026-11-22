@@ -17,3 +17,4 @@ jobs:
           QT_QPA_PLATFORM: offscreen
       - run: python -m compileall -q src
       - run: python -m ruff check .
+      - run: python -m pyright
