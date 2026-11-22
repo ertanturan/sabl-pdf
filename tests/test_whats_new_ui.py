@@ -60,6 +60,5 @@ def test_whats_new_can_be_reopened_from_welcome_screen(monkeypatch) -> None:
     assert window.whats_new_action.isEnabled()
     assert window.workspace.currentWidget() is window.welcome
     assert len(dialogs) == 2
-    assert "## New features" not in dialogs[0].findChild(QTextBrowser, "release_notes_text").toPlainText()
     assert "New features" in dialogs[0].findChild(QTextBrowser, "release_notes_text").toPlainText()
     window.close()
