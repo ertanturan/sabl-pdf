@@ -24,10 +24,12 @@
 
 ## Testing
 - Implement unit tests for each feature or bugfix in the same PR.
-- Use `.agents/skills/unit-tests/SKILL.md` for every unit test, regression test, and test fixture change.
+- Before making or reviewing **any code change** (feature, bugfix, refactor, test, build script, or CI code), read and apply `.agents/skills/unit-tests/SKILL.md`. Keep its requirements in scope throughout the change, even when no test file is touched.
 - Follow Arrange, Act, Assert (AAA): separate setup, operation and verification clearly in every test.
 - Keep unit tests and test fixtures free of logic: no branching, loops, comprehensions, or reimplementations of production behavior. Use fixed AAA steps and direct assertions.
 - Cover successful operations, invalid inputs and state changes.
+- Keep total line coverage for `sabl_pdf` at **80% or higher**. Every code-changing PR must run the full coverage gate and report the measured percentage; do not merge if it fails.
+- Add or update AAA tests for changed behavior. Do not weaken assertions, exclude production files, or lower the coverage threshold to make checks pass.
 - Run `python -m pytest`, `python -m compileall -q src`, `ruff check .` and `python -m pyright` before opening PRs.
 - Keep tests deterministic, offline and temporary-file based.
 

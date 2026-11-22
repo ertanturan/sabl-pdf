@@ -1,11 +1,11 @@
 ---
 name: unit-tests
-description: Write, change, and review SABL PDF pytest unit tests using Arrange, Act, Assert (AAA). Use this skill for every unit test, regression test, and test fixture change.
+description: Mandatory for every SABL PDF code change, including features, bug fixes, refactors, tests, build scripts, and CI. Read before editing code; write and review Arrange, Act, Assert (AAA) unit tests and maintain at least 80% total line coverage.
 ---
 
 # Unit tests
 
-Use the Arrange, Act, Assert (AAA) pattern for every test in `tests/`.
+Read and apply this skill **before every code change**, even if no test file will change. Use the Arrange, Act, Assert (AAA) pattern for every test in `tests/`. Add or update tests for affected behavior and maintain at least **80% total line coverage** for `sabl_pdf`.
 
 ## Structure
 
@@ -75,9 +75,9 @@ Run the focused test first, then the project checks before opening a PR:
 
 ```powershell
 python -m pytest -q tests/test_<feature>.py
-python -m pytest
+python -m pytest -q --cov=sabl_pdf --cov-report=term-missing --cov-fail-under=80
 python -m compileall -q src
 ruff check .
 ```
 
-Report which commands actually ran and their results in the PR. Include additional required checks configured by the branch's CI.
+Run the full coverage command for every code-changing PR, report the measured total line coverage in the PR, and fix coverage failures before merging. The threshold applies to the entire `sabl_pdf` package, not only changed files. Never manipulate coverage exclusions or lower the threshold to avoid writing meaningful tests. Report which commands actually ran and their results in the PR. Include additional required checks configured by the branch's CI.
