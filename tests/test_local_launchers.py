@@ -12,7 +12,7 @@ def test_windows_launchers_target_existing_scripts(name: str) -> None:
 
     command = path.read_text(encoding="utf-8")
 
-    assert f"scripts\\\\{name}.ps1" in command
+    assert f"scripts\\{name}.ps1" in command
     assert "powershell.exe -NoProfile -ExecutionPolicy Bypass -File" in command
     assert (ROOT / "scripts" / f"{name}.ps1").is_file()
 
