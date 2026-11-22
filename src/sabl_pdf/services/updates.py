@@ -4,6 +4,7 @@ import re
 
 
 VERSION_PATTERN = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
+CHECK_INTERVAL_SECONDS = 86400
 
 
 @dataclass(frozen=True)
@@ -39,3 +40,7 @@ def parse_latest_release(payload: bytes, installed_version: str) -> AvailableUpd
         return None
     url = f"https://github.com/ertanturan/sabl-pdf/releases/tag/{tag}"
     return AvailableUpdate(tag[1:], notes, url)
+
+
+def automatic_check_due(last_checked: float, now: float) -> bool:
+    return last_checked <= 0 or now < last_checked or now - last_checked >= CHECK_INTERVAL_SECONDS
