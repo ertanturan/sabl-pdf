@@ -46,7 +46,7 @@ $iscc = Find-InnoSetup
 
 Push-Location $projectRoot
 try {
-    if ($NoVersionBump) {
+    if ($NoVersionBump -or (-not ($Major -or $Secondary -or $Minor))) {
         $versionArgs = @('scripts/versioning.py', 'check')
         if ($env:GITHUB_REF_TYPE -eq 'tag') {
             $versionArgs += @('--expected-tag', $env:GITHUB_REF_NAME)
