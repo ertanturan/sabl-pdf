@@ -42,13 +42,16 @@ class TextSelectionService:
             return None
         selected = glyphs[min(first, last):max(first, last)]
         rects = self._line_rects(selected)
-        display = tuple(tuple(fitz.Rect(rect) * page.rotation_matrix) for rect in rects)
+        display = tuple(self._bounds(fitz.Rect(rect) * page.rotation_matrix) for rect in rects)
         return TextSelection(page_index, self._text(selected), rects, display)
 
     def _glyphs(self, page: fitz.Page) -> list[TextGlyph]:
         glyphs: list[TextGlyph] = []
         line_number = 0
-        for block in page.get_text("rawdict")["blocks"]:
+        raw = page.get_text("rawdict")
+        if not isinstance(raw, dict):
+            raise ValueError("Cannot extract PDF character geometry")
+        for block in raw["blocks"]:
             for line in block.get("lines", []):
                 for span in line["spans"]:
                     for character in span["chars"]:
@@ -87,7 +90,10 @@ class TextSelectionService:
             else:
                 rectangles.append(bounds)
                 previous_line = glyph.line
-        return tuple(tuple(rect) for rect in rectangles)
+        return tuple(self._bounds(rect) for rect in rectangles)
+
+    def _bounds(self, rect: fitz.Rect) -> tuple[float, float, float, float]:
+        return (rect.x0, rect.y0, rect.x1, rect.y1)
 
     def _text(self, glyphs: list[TextGlyph]) -> str:
         parts: list[str] = []
