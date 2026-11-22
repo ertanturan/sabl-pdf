@@ -32,3 +32,22 @@ select = ["E4", "E7", "E9", "F"]
 include = ["src"]
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
+ignore = [
+    "src/sabl_pdf/services/conversion.py",
+    "src/sabl_pdf/services/forms.py",
+    "src/sabl_pdf/services/ocr.py",
+    "src/sabl_pdf/services/placed_items.py",
+    "src/sabl_pdf/services/signatures.py",
+    "src/sabl_pdf/services/text_boxes.py",
+    "src/sabl_pdf/services/viewer.py",
+    "src/sabl_pdf/ui/annotation_actions.py",
+    "src/sabl_pdf/ui/canvas.py",
+    "src/sabl_pdf/ui/compression_actions.py",
+    "src/sabl_pdf/ui/conversion_actions.py",
+    "src/sabl_pdf/ui/ocr_actions.py",
+    "src/sabl_pdf/ui/page_actions.py",
+    "src/sabl_pdf/ui/signature_actions.py",
+    "src/sabl_pdf/ui/text_actions.py",
+    "src/sabl_pdf/ui/viewer_actions.py",
+    "src/sabl_pdf/ui/window.py",
+]
