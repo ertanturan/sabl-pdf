@@ -47,6 +47,8 @@ def validate_notes(notes: str) -> str:
     entries = [line.strip() for section in sections[2::2] for line in section.splitlines() if line.strip()]
     if not entries or any(not item.startswith("- ") for item in entries):
         raise ValueError("Release notes require Markdown bullet entries")
+    if any(len(item) > 100 for item in entries):
+        raise ValueError("Each release-note bullet must be at most 100 characters")
     if all(item == "- None." for item in entries):
         raise ValueError("Add an actual changelog entry before publishing a release")
     return "\n".join(sections[1:]).strip()
