@@ -4,7 +4,7 @@ Status: The manually triggered Windows release workflow is implemented in this P
 
 ## Current state
 
-SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds an onedir executable; Inno Setup 6 builds `dist/installer/SABL-PDF-Setup.exe`. The `.github/workflows/installer.yml` job currently uploads a CI artifact on `v*` tags, not an actual GitHub Release. Version `0.1.0` appears separately in `pyproject.toml`, `src/sabl_pdf/__init__.py` and `installer/SABL-PDF.iss`.
+SABL PDF is a Windows-only Python 3.12/PySide6 application. PyInstaller builds an onedir executable; Inno Setup 6 builds `dist/installer/SABL-PDF-Setup.exe`. The `.github/workflows/installer.yml` job uses manual `workflow_dispatch` and an automatic selected version increment to build and stage/publish a versioned GitHub Release. Version `0.1.0` appears separately in `pyproject.toml`, `src/sabl_pdf/__init__.py` and `installer/SABL-PDF.iss`.
 
 **Important distribution constraint:** the source repository, `ertanturan/sabl-pdf`, is private. Unauthenticated users cannot get release assets from a private GitHub repository. Keep source private and create a separate public binary-only repository, proposed name `ertanturan/sabl-pdf-releases`. Alternatively, the owner can make the source repository public before shipping. Never embed a GitHub access token or private-repository credential in the installed application.
 
