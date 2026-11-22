@@ -1,9 +1,6 @@
 from pathlib import Path
-import sys
 
 import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from versioning import bump_version, check_version, main, next_version
 
