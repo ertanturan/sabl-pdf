@@ -57,7 +57,7 @@ Releases are created in this public repository at [GitHub Releases](https://gith
 5. GitHub bumps the selected version, freezes its changelog, tests and smoke-tests the Windows installer, then publishes the installer, checksum, and release notes to this repository's Releases page.
 6. GitHub opens a release-record PR and explicitly starts its CI checks. **Merge that PR manually before the next release** so `master` matches the published version.
 
-If a release run fails, check its logs and inspect any leftover draft release or branch before retrying. Existing local builds remain version-neutral unless you pass `-Minor`, `-Secondary`, or `-Major`; they do not publish releases.
+Before the first release, enable **Settings > General > Releases > Enable release immutability** to protect published tags, notes and assets. If a release run fails, check its logs and inspect any leftover draft release or branch before retrying. Existing local builds remain version-neutral unless you pass `-Minor`, `-Secondary`, or `-Major`; they do not publish releases.
 
 After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen. Use **Ctrl+F** to search, **Ctrl+S** to save, or **File > Save as** to write a separate copy.
 
