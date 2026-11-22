@@ -2,13 +2,15 @@ from collections.abc import Callable
 
 from PySide6.QtCore import Qt, QRectF, Signal
 from PySide6.QtGui import QBrush, QColor, QImage, QPainterPath, QPen, QPixmap
-from PySide6.QtWidgets import QGraphicsScene, QGraphicsView
+from PySide6.QtWidgets import QGraphicsScene, QGraphicsView, QMenu
 
 
 class PdfCanvas(QGraphicsView):
     area_selected = Signal(int, tuple)
     page_changed = Signal(int)
     selection_cancelled = Signal()
+    item_move_requested = Signal(int, int, tuple)
+    item_delete_requested = Signal(int, int)
 
     def __init__(self) -> None:
         super().__init__()
@@ -25,6 +27,13 @@ class PdfCanvas(QGraphicsView):
         self._rubber_band = None
         self._preview_item = None
         self._search_highlight = None
+        self._placed_items: list[tuple[int, int, QRectF]] = []
+        self._selected_item: tuple[int, int] | None = None
+        self._item_outline = None
+        self._drag_origin = None
+        self._drag_rect = None
+        self._dragging = False
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setBackgroundBrush(QBrush(QColor("#eaeaea")))
         self.verticalScrollBar().valueChanged.connect(self._viewport_changed)
         self.horizontalScrollBar().valueChanged.connect(self._viewport_changed)
@@ -37,6 +46,11 @@ class PdfCanvas(QGraphicsView):
         self._scene.clear()
         self._preview_item = None
         self._search_highlight = None
+        self._item_outline = None
+        self._selected_item = None
+        self._placed_items = []
+        self._drag_origin = None
+        self._drag_rect = None
         self._page_items.clear()
         self._page_rects = self._layout_pages(sizes)
         width = max((rect.right() for rect in self._page_rects), default=0)
@@ -169,6 +183,106 @@ class PdfCanvas(QGraphicsView):
                 return index
         return None
 
+    def set_placed_items(self, items: list[tuple[int, int, tuple]]) -> None:
+        self.clear_item_selection()
+        self._placed_items = []
+        for page, xref, bounds in items:
+            if not 0 <= page < len(self._page_rects):
+                continue
+            page_rect = self._page_rects[page]
+            x0, y0, x1, y1 = bounds
+            rect = QRectF(
+                page_rect.left() + x0 * self._zoom,
+                page_rect.top() + y0 * self._zoom,
+                (x1 - x0) * self._zoom,
+                (y1 - y0) * self._zoom,
+            )
+            self._placed_items.append((page, xref, rect))
+
+    def _item_at(self, position) -> tuple[int, int, QRectF] | None:
+        for item in reversed(self._placed_items):
+            if item[2].contains(position):
+                return item
+        return None
+
+    def _select_item(self, item: tuple[int, int, QRectF] | None) -> None:
+        self.clear_item_selection()
+        if item is None:
+            return
+        page, xref, rect = item
+        self._selected_item = (page, xref)
+        self._item_outline = self._scene.addRect(
+            rect,
+            QPen(QColor("#2775cc"), 2, Qt.PenStyle.DashLine),
+            QBrush(QColor(39, 117, 204, 35)),
+        )
+        self._item_outline.setZValue(20)
+        self.setFocus()
+
+    def clear_item_selection(self) -> None:
+        if self._item_outline is not None:
+            self._scene.removeItem(self._item_outline)
+            self._item_outline = None
+        self._selected_item = None
+        self._drag_origin = None
+        self._drag_rect = None
+        self._dragging = False
+
+    def _drag_item(self, position) -> None:
+        if self._selected_item is None or self._drag_rect is None:
+            return
+        page = self._selected_item[0]
+        page_rect = self._page_rects[page]
+        delta = position - self._drag_origin
+        dx = max(page_rect.left() - self._drag_rect.left(),
+                 min(delta.x(), page_rect.right() - self._drag_rect.right()))
+        dy = max(page_rect.top() - self._drag_rect.top(),
+                 min(delta.y(), page_rect.bottom() - self._drag_rect.bottom()))
+        self._dragging = abs(dx) > 2 or abs(dy) > 2
+        self._item_outline.setRect(self._drag_rect.translated(dx, dy))
+
+    def _finish_item_drag(self) -> None:
+        key = self._selected_item
+        if key is None or not self._dragging:
+            return
+        page, xref = key
+        page_rect = self._page_rects[page]
+        rect = self._item_outline.rect()
+        self.item_move_requested.emit(page, xref, (
+            (rect.left() - page_rect.left()) / self._zoom,
+            (rect.top() - page_rect.top()) / self._zoom,
+            (rect.right() - page_rect.left()) / self._zoom,
+            (rect.bottom() - page_rect.top()) / self._zoom,
+        ))
+
+    def delete_selected_item(self) -> None:
+        if self._selected_item is not None:
+            self.item_delete_requested.emit(*self._selected_item)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() in (Qt.Key.Key_Delete, Qt.Key.Key_Backspace):
+            self.delete_selected_item()
+            event.accept()
+            return
+        if event.key() == Qt.Key.Key_Escape and self._selected_item is not None:
+            self.clear_item_selection()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def contextMenuEvent(self, event) -> None:
+        if self._selection_enabled:
+            event.accept()
+            return
+        item = self._item_at(self.mapToScene(event.pos()))
+        if item is None:
+            super().contextMenuEvent(event)
+            return
+        self._select_item(item)
+        menu = QMenu(self)
+        menu.addAction("Delete selected item", self.delete_selected_item)
+        menu.exec(event.globalPos())
+
     def mousePressEvent(self, event) -> None:
         if self._selection_enabled and event.button() == Qt.MouseButton.RightButton:
             self._cancel_selection()
@@ -185,9 +299,22 @@ class PdfCanvas(QGraphicsView):
                 )
                 event.accept()
                 return
+        if not self._selection_enabled and event.button() == Qt.MouseButton.LeftButton:
+            position = self.mapToScene(event.position().toPoint())
+            item = self._item_at(position)
+            self._select_item(item)
+            if item is not None:
+                self._drag_origin = position
+                self._drag_rect = QRectF(item[2])
+                event.accept()
+                return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
+        if self._drag_origin is not None and event.buttons() & Qt.MouseButton.LeftButton:
+            self._drag_item(self.mapToScene(event.position().toPoint()))
+            event.accept()
+            return
         if self._selection_enabled:
             self._move_preview(self.mapToScene(event.position().toPoint()))
         if self._selection_enabled and self._origin is not None:
@@ -209,6 +336,14 @@ class PdfCanvas(QGraphicsView):
         self.selection_cancelled.emit()
 
     def mouseReleaseEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.LeftButton and self._drag_origin is not None:
+            self._drag_item(self.mapToScene(event.position().toPoint()))
+            self._finish_item_drag()
+            self._drag_origin = None
+            self._drag_rect = None
+            self._dragging = False
+            event.accept()
+            return
         if self._selection_enabled and self._origin is not None and self._origin_page is not None:
             page_index = self._origin_page
             page_rect = self._page_rects[page_index]

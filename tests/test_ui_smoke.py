@@ -122,7 +122,7 @@ def test_signature_click_place_cancel_and_reuse(tmp_path, monkeypatch) -> None:
     page = window.canvas._page_rects[0]
     click = window.canvas.mapFromScene(page.left() + 40, page.top() + 90)
     QTest.mouseClick(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=click)
-    assert len(window.session.document[0].get_drawings()) > 0
+    assert any(a.type[0] == fitz.PDF_ANNOT_INK for a in window.session.document[0].annots() or ())
     assert window._load_saved_signature() == strokes
     monkeypatch.setattr(window, "_confirm_changes", lambda: True)
     window.close()
@@ -404,4 +404,64 @@ def test_tab_close_respects_cancel_and_returns_to_welcome(tmp_path, monkeypatch)
     assert window.document_tabs.count() == 0
     assert window.workspace.currentWidget() is window.welcome
     assert not window.quick_actions["save"].isEnabled()
+    window.close()
+
+def test_select_and_delete_text_box_by_click(sample_pdf, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(sample_pdf)
+    xref = window.text_boxes.add(0, (30, 85, 140, 120), "Editable")
+    window._refresh()
+    application.processEvents()
+
+    page = window.canvas._page_rects[0]
+    click = window.canvas.mapFromScene(page.left() + 55, page.top() + 100)
+    QTest.mouseClick(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=click)
+
+    assert window.canvas._selected_item == (0, xref)
+
+    QTest.keyClick(window.canvas, Qt.Key.Key_Delete)
+
+    assert window.text_boxes.list(0) == []
+    monkeypatch.setattr(window, "_confirm_changes", lambda: True)
+    window.close()
+
+
+def test_drag_text_box_on_page(sample_pdf, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    from PySide6.QtWidgets import QApplication
+
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.show()
+    window.open_path(sample_pdf)
+    xref = window.text_boxes.add(0, (30, 85, 140, 120), "Draggable")
+    window._refresh()
+    application.processEvents()
+
+    page = window.canvas._page_rects[0]
+    start = window.canvas.mapFromScene(page.left() + 55, page.top() + 100)
+    destination = start + type(start)(35, 25)
+    QTest.mousePress(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=start)
+    QTest.mouseMove(window.canvas.viewport(), destination)
+    QTest.mouseRelease(window.canvas.viewport(), Qt.MouseButton.LeftButton, pos=destination)
+
+    moved = window.text_boxes.list(0)
+    assert len(moved) == 1
+    assert moved[0].xref == xref
+    assert abs(moved[0].bounds[0] - 65) < 2
+    assert abs(moved[0].bounds[1] - 110) < 2
+    monkeypatch.setattr(window, "_confirm_changes", lambda: True)
     window.close()

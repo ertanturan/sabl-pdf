@@ -8,6 +8,7 @@ from sabl_pdf.services.compression import CompressionService
 from sabl_pdf.services.conversion import ConversionService
 from sabl_pdf.services.forms import FormService
 from sabl_pdf.services.ocr import OcrService
+from sabl_pdf.services.placed_items import PlacedItemService
 from sabl_pdf.services.pages import PageService
 from sabl_pdf.services.signatures import SignatureService
 from sabl_pdf.services.text_boxes import TextBoxService
@@ -21,6 +22,7 @@ class DocumentTab(QWidget):
         self.session = session
         self.viewer = ViewerService(session)
         self.text_boxes = TextBoxService(session)
+        self.placed_items = PlacedItemService(session)
         self.forms = FormService(session)
         self.signatures = SignatureService(session)
         self.pages = PageService(session)

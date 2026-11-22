@@ -14,6 +14,12 @@
 - Inject dependencies where appropriate. Keep pure business logic independent of widgets.
 - Use descriptive public API names, explicit exceptions and typing.
 
+## Editable placed content
+- Every placed PDF item must be selectable by clicking it, repositionable with a held left mouse button, and removable with Delete or the item context menu.
+- New placement tools must use the shared placed-item service and canvas interaction model.
+- Do not flatten newly placed items into uneditable page content; preserve editable PDF annotations.
+- Add selection, drag, deletion, and persistence regression tests when adding new item types.
+
 ## Testing
 - Implement unit tests for each feature or bugfix in the same PR.
 - Follow Arrange, Act, Assert (AAA): separate setup, operation and verification clearly in every test.
