@@ -46,6 +46,18 @@ def test_delete_only_page_is_rejected(session: DocumentSession) -> None:
         service.delete(0)
 ```
 
+## No logic in tests
+
+Unit tests must be straight-line Arrange, Act, Assert code. A test documents behavior; it must not implement, re-create, or decide that behavior.
+
+- Never write `if`, `elif`, `else`, `for`, `while`, `match`, or other branching or iteration in unit tests, test-only helpers, or fixtures.
+- Do not use conditional expressions, comprehensions, `any()`, `all()`, `map()`, `filter()`, or loops disguised as expressions.
+- Do not calculate expected results, transform actual results, implement algorithms, or duplicate production logic inside tests.
+- Arrange fixed inputs and literal expected values, Act by calling the unit under test, then Assert the observable output or state directly.
+- Use separate named tests or `@pytest.mark.parametrize` with static cases for different inputs and outcomes. Never branch on a scenario inside a test.
+- Keep fixtures limited to straightforward data and resource setup/teardown. Move behavior to production code rather than creating test-only implementations of it.
+- `with pytest.raises(...)` is permitted to assert an exception; it is not application logic.
+
 ## Rules
 
 - Use one behavior per test; separate unrelated operations or outcomes into separate tests.
