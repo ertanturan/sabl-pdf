@@ -1,12 +1,15 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from PySide6.QtCore import QSettings, QSize, Qt, QTimer
+from PySide6.QtCore import QSettings, QSize, Qt, QTimer, QUrl
+from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget
 
 from sabl_pdf import __version__
 from sabl_pdf.services.release_notes import installed_release_notes
+from sabl_pdf.services.updates import AvailableUpdate, parse_latest_release
+from sabl_pdf.ui.update_available_dialog import UpdateAvailableDialog
 from sabl_pdf.ui.whats_new_dialog import WhatsNewDialog
 from sabl_pdf.core.session import DocumentSession
 from sabl_pdf.services.viewer import SearchMatch, ViewerService
@@ -41,6 +44,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     ) -> None:
         super().__init__()
         self._ui_settings = settings or QSettings("SABL", "SABL PDF")
+        self._update_manager = QNetworkAccessManager(self)
+        self._pending_update_reply: QNetworkReply | None = None
         self._initial_session = session
         self._active_tab: DocumentTab | None = None
         self._empty_session = session or DocumentSession()
@@ -157,9 +162,47 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         help_menu = self.menuBar().addMenu("Help")
         self.whats_new_action = help_menu.addAction("What's New")
         self.whats_new_action.triggered.connect(self.show_whats_new)
+        self.check_updates_action = help_menu.addAction("Check for Updates")
+        self.check_updates_action.triggered.connect(self.check_for_updates)
 
     def show_whats_new(self) -> None:
         WhatsNewDialog(__version__, installed_release_notes(), self).exec()
+
+    def check_for_updates(self) -> None:
+        if self._pending_update_reply is not None:
+            return
+        request = QNetworkRequest(
+            QUrl("https://api.github.com/repos/ertanturan/sabl-pdf/releases/latest")
+        )
+        request.setRawHeader(b"User-Agent", b"SABL-PDF")
+        request.setRawHeader(b"Accept", b"application/vnd.github+json")
+        request.setTransferTimeout(10000)
+        reply = self._update_manager.get(request)
+        self._pending_update_reply = reply
+        self.check_updates_action.setEnabled(False)
+        reply.finished.connect(lambda: self._finish_update_check(reply))
+
+    def _finish_update_check(self, reply: QNetworkReply) -> None:
+        self._pending_update_reply = None
+        self.check_updates_action.setEnabled(True)
+        if reply.error() != QNetworkReply.NetworkError.NoError:
+            QMessageBox.warning(self, "Update check failed", reply.errorString())
+            reply.deleteLater()
+            return
+        try:
+            update = parse_latest_release(bytes(reply.readAll()), __version__)
+        except ValueError as error:
+            QMessageBox.warning(self, "Update check failed", str(error))
+            reply.deleteLater()
+            return
+        reply.deleteLater()
+        self._show_update_result(update)
+
+    def _show_update_result(self, update: AvailableUpdate | None) -> None:
+        if update is None:
+            QMessageBox.information(self, "Up to date", f"SABL PDF v{__version__} is up to date.")
+            return
+        UpdateAvailableDialog(__version__, update, self).exec()
 
     def _connect_tab(self, tab: DocumentTab) -> None:
         tab.canvas.area_selected.connect(
