@@ -32,7 +32,7 @@ A release page receives exactly the contents of its own version file, not the wh
 - Description of the documentation update. (#PR)
 ```
 
-Use `- None.` in an empty section. Entries must say what changed, not promise future work. No generated GitHub commit dump or cumulative notes on an individual release page.
+Use `- None.` in an empty section. Each release-note bullet must be at most 100 characters, including `- `. Split long entries rather than dropping facts. Entries must say what changed, not promise future work. No generated GitHub commit dump or cumulative notes on an individual release page.
 
 ## Working rules
 
