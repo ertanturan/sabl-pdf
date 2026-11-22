@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QLabel, QPushButton, QVBoxLayout, QWidget
 
 class WelcomePage(QWidget):
     open_requested = Signal()
+    default_app_requested = Signal()
     file_dropped = Signal(str)
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -29,6 +30,13 @@ class WelcomePage(QWidget):
         layout.addWidget(heading)
         layout.addWidget(instruction)
         layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignHCenter)
+        default_button = QPushButton("Set as default PDF app", self)
+        default_button.setObjectName("welcome_default_pdf")
+        default_button.setMinimumWidth(180)
+        default_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        default_button.setToolTip("Choose SABL PDF for .pdf files in Windows Settings")
+        default_button.clicked.connect(lambda _checked=False: self.default_app_requested.emit())
+        layout.addWidget(default_button, alignment=Qt.AlignmentFlag.AlignHCenter)
 
     def _pdf_path(self, event) -> str | None:
         if not event.mimeData().hasUrls():
