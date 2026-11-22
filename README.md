@@ -1,44 +1,61 @@
 # SABL PDF
 
-A small, offline Windows PDF viewer and editor written in Python.
+SABL PDF is a Windows desktop app for opening, reviewing and making common changes to PDF files without uploading documents to a service. You can work with several PDFs in tabs, fill forms, add text and signatures, annotate pages, reorganise pages and save the result locally.
 
-No account. No advertising. No telemetry. No subscriptions.
+It runs offline and requires no account or subscription. It does not include advertising or telemetry.
+
+## Tech Stack
+
+- **Python 3.12+** for the application and PDF services.
+- **PySide6 (Qt)** for the Windows desktop interface.
+- **PyMuPDF** for PDF rendering, text extraction and document operations.
+- **Pillow** for image handling; **Tesseract OCR** for scanned-page text recognition through PyMuPDF.
+- **PyInstaller** for executable packaging and **Inno Setup 6** for the Windows installer.
 
 ## Features
 
-- **Viewer:** Open, search, zoom and copy text.
-- **Text & forms:** Add/edit/remove text-box annotations; fill interactive PDF text or checkbox fields.
-- **Signatures:** Draw a signature or place a PNG/JPEG signature image.
-- **Pages:** Merge, split, delete, rotate or reorder pages.
-- **Annotations:** Highlight, underline, add notes or remove annotations.
-- **Compression:** Optimise PDF object streams; optionally recompress images. Results depend on the document.
-- **Conversion:** Images to PDF and PDF pages to PNG.
-- **OCR:** Extract text from scanned pages locally using Tesseract data installed with the Windows package.
+- **Viewing:** Open PDFs in separate tabs, search existing text, zoom, use page thumbnails and copy text.
+- **Text and forms:** Add, edit, move or remove text-box annotations; fill PDF text and checkbox fields.
+- **Signatures:** Draw and reuse a signature, or place a PNG/JPEG signature image.
+- **Pages:** Merge PDFs, split page ranges, delete, rotate or reorder pages.
+- **Annotations:** Highlight, underline, add notes and remove annotations.
+- **Compression:** Optimise PDF object streams and optionally recompress images. Savings depend on the file.
+- **Conversion:** Add images as PDF pages or export PDF pages as PNG files.
+- **OCR:** Recognise scanned-page text locally using Tesseract OCR and export it as text. Tesseract OCR support and language data must be available.
 
-Existing PDF page text is not edited in-place. Newly added text remains editable until the annotation is flattened externally. Signatures are visual marks, not certificate-based digital signatures.
+## Run from source (Windows)
 
-## Local development on Windows
+Requires **Python 3.12+** available as `py` or `python`. From a checkout, double-click `run.cmd`, or use the commands below in the repository root:
 
-Requires Python 3.12+ installed and available through `py` or `python`. Double-click these files in the repository root:
-
-| File | Action |
+| Launcher | What it does |
 | --- | --- |
-| `run.cmd` | Create or reuse `.venv`, install dependencies, and open SABL PDF. |
-| `test.cmd` | Prepare the environment, run pytest, compile Python files, and run Ruff and Pyright. |
-| `build.cmd` | Run all checks, package the app with PyInstaller, and create the Windows installer. |
+| `run.cmd` | Creates/reuses `.venv`, installs project and development dependencies, and opens the app. |
+| `test.cmd` | Prepares the environment, then runs pytest, Python compilation and Ruff. |
+| `build.cmd` | Runs checks, builds the app with PyInstaller and creates the installer with Inno Setup 6. |
 
-`build.cmd` requires Inno Setup 6. The installer output is in `dist/installer`.
+The PowerShell equivalents are `./scripts/run.ps1`, `./scripts/test.ps1` and `./scripts/build.ps1`. The `.cmd` launchers are intended for double-clicking; they invoke PowerShell without requiring a permanent execution-policy change. Tests use Qt offscreen mode.
 
-To run the same tasks from PowerShell, use `./scripts/run.ps1`, `./scripts/test.ps1`, or `./scripts/build.ps1`. A double-click on a `.ps1` file normally opens an editor on Windows, so the `.cmd` launchers invoke the scripts with a process-scoped execution policy. No permanent PowerShell policy change is made. Tests use Qt offscreen mode without affecting the normal app launcher.
+After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen. Use **Ctrl+F** to search, **Ctrl+S** to save, or **File > Save as** to write a separate copy.
 
-The type check also runs directly with `python -m pyright` after installing `.[dev]`. Existing files with type errors are listed under `[tool.pyright].ignore` so Pyright can gate clean files and new modules. Remove each entry when its typing is fixed.
+### Build and OCR prerequisites
 
-For OCR in a source checkout, install Tesseract `eng.traineddata` or provide a valid `TESSDATA_PREFIX`. Release installers include English OCR data.
+- Install **Inno Setup 6** before running `build.cmd`. The installer is written to `dist/installer/SABL-PDF-Setup.exe`.
+- **OCR requires Tesseract.** PyMuPDF uses the Tesseract engine built into MuPDF, but needs Tesseract language data (`eng.traineddata` for English). For source runs, install Tesseract OCR with English language data and, if PyMuPDF cannot locate it, set `TESSDATA_PREFIX` to the folder containing `eng.traineddata` (for example, `C:\Program Files\Tesseract-OCR\tessdata`). The Tesseract command-line executable is not called when the data path is provided.
+- For a local installer build, put `eng.traineddata` in `installer/tessdata/` before building. The tagged-release workflow downloads this file for its installer build.
 
-## PDF association
+## Important limitations
 
-The installer registers SABL PDF as an available PDF handler. Windows 10/11 require the user to choose the default PDF app through **Settings > Apps > Default apps**. SABL PDF never changes the default silently.
+- Text boxes are editable annotations; SABL PDF does **not** modify existing page text in place.
+- Drawn or image signatures are visual marks, **not** certificate-based digital signatures.
+- OCR can extract text, but does **not** yet make scanned PDFs searchable within the PDF. Normal Find searches an existing text layer.
+- **Permanent redaction is not available yet.** Covering text with an annotation does not securely remove the underlying data.
+
+See [backlog.md](backlog.md) for proposed work, not shipped features.
+
+## PDF file association
+
+The installer registers SABL PDF as an available PDF app. On Windows 10/11, select it through **Settings > Apps > Default apps** if you want it as the default. Installation does not change your preference automatically.
 
 ## Contributing
 
-See [AGENTS.md](AGENTS.md) for architecture, tests, atomic commit rules, stacked PR workflow and daily change logs.
+See [AGENTS.md](AGENTS.md) for the architecture, testing requirements, commit and PR conventions, and change-log rules.
