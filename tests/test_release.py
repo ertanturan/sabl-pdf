@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -214,4 +215,15 @@ def test_release_rejects_unpublished_snapshot(release_root: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="no published tag"):
+        verify_history(release_root)
+
+
+def test_entire_published_history_directory_cannot_be_deleted(release_root: Path) -> None:
+    prepare_release(release_root, "minor", "2026-11-22")
+    git(release_root, "add", ".")
+    git(release_root, "commit", "-qm", "release")
+    git(release_root, "tag", "v0.1.1")
+    shutil.rmtree(release_root / "docs/changelog/releases")
+
+    with pytest.raises(ValueError, match="Published changelog cannot change"):
         verify_history(release_root)
