@@ -85,6 +85,7 @@
 ## Release notes in the UI
 - Help > What's New must always open the installed version's bundled release notes, including offline and without an open PDF.
 - Closing release notes never disables future access; do not add a permanent dismissal option.
+- Show release notes once after an installed-version change. Keep the Help action available on every launch.
 - Keep release notes tied to the installed version, not the current unreleased draft or newest online release.
 
 ## Distribution
