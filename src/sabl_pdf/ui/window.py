@@ -36,9 +36,11 @@ from sabl_pdf.services.conversion import ConversionService
 from sabl_pdf.ui.conversion_actions import ConversionActions
 from sabl_pdf.services.ocr import OcrService
 from sabl_pdf.ui.ocr_actions import OcrActions
+from sabl_pdf.services.redaction import RedactionService
+from sabl_pdf.ui.redaction_actions import RedactionActions
 
 
-class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, OcrActions, QMainWindow):
+class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, OcrActions, RedactionActions, QMainWindow):
 
     def __init__(
         self, session: DocumentSession | None = None, settings: QSettings | None = None
@@ -63,6 +65,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.compression = CompressionService(self.session)
         self.conversion = ConversionService(self.session)
         self.ocr = OcrService(self.session)
+        self.redaction = RedactionService(self.session)
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
@@ -138,8 +141,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(file_menu, "Close tab", self._close_current_tab, "Ctrl+W")
         self._action(file_menu, "Save", self.save_pdf, "Ctrl+S")
         self._action(file_menu, "Save as", self.save_as)
-        self._action(file_menu, "Copy page text", self.copy_page_text, "Ctrl+C")
-        self._action(file_menu, "Copy selected text", self.copy_selection)
+        self._action(file_menu, "Copy page text", self.copy_page_text)
+        self._action(file_menu, "Copy selected text", self.copy_selection, "Ctrl+C")
         edit = self.menuBar().addMenu("Text & Forms")
         self._action(edit, "Add text box", self.add_text_box)
         self._action(edit, "Edit text box", self.edit_text_box)
@@ -168,6 +171,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(tools, "Export pages as images", self.export_images)
         self._action(tools, "OCR current page", self.ocr_page)
         self._action(tools, "Export OCR text", self.export_ocr)
+        self._action(tools, "Redact information", self.redact_information)
+        self._action(tools, "Redact an area", self.redact_area)
         help_menu = self.menuBar().addMenu("Help")
         self.whats_new_action = help_menu.addAction("What's New")
         self.whats_new_action.triggered.connect(self.show_whats_new)
@@ -179,6 +184,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self._ui_settings.value("updates/automatic", True, type=bool)
         )
         self.auto_updates_action.toggled.connect(self._set_automatic_update_checks)
+
 
     def show_whats_new(self) -> None:
         WhatsNewDialog(__version__, installed_release_notes(), self).exec()
@@ -267,6 +273,15 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.show_available_update()
 
     def _connect_tab(self, tab: DocumentTab) -> None:
+        tab.canvas.redact_text_requested.connect(
+            lambda: self._from_tab(tab, self.redact_selected_text)
+        )
+        tab.canvas.redact_area_requested.connect(
+            lambda: self._from_tab(tab, self.redact_area)
+        )
+        tab.canvas.copy_text_requested.connect(
+            lambda: self._from_tab(tab, self.copy_selection)
+        )
         tab.canvas.area_selected.connect(
             lambda page, bounds: self._from_tab(tab, self._on_area_selected, page, bounds)
         )
@@ -314,7 +329,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     def _restore_document(self, tab: DocumentTab) -> None:
         for name in (
             "session", "viewer", "text_boxes", "placed_items", "forms", "signatures", "pages",
-            "annotations", "compression", "conversion", "ocr", "canvas",
+            "annotations", "compression", "conversion", "ocr", "redaction", "canvas",
         ):
             setattr(self, name, getattr(tab, name))
         self.page_index = tab.page_index
@@ -574,6 +589,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self._close_search()
         else:
             self.canvas.clear_item_selection()
+            self.canvas.clear_text_selection()
 
 
     def _require_document(self) -> bool:
@@ -607,6 +623,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             lambda index: self.viewer.render(index, self.zoom),
             self.zoom,
         )
+        self.canvas.set_text_selector(self.viewer.select_text)
         self.canvas.set_placed_items([
             (item.page, item.xref, item.bounds) for item in self.placed_items.list()
         ])
