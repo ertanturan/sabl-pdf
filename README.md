@@ -46,9 +46,20 @@ The manually triggered GitHub release workflow increments the version automatica
 | GitHub Actions release: `major` | `1.0.0` |
 | `build.cmd` (normal local build) | `0.1.9` |
 
-The same flags work with `./scripts/build.ps1`. Run one flag at a time. Bumping synchronises `pyproject.toml`, the application version and the Inno Setup version before tests and packaging. The new version remains in the working tree, so commit these updates when preparing a release. A bump can remain even if a later packaging step fails.
+### Publish a Windows installer
 
-Tagged CI builds use `-NoVersionBump` and reject a version that does not match the release tag. A local build does not publish a GitHub Release or freeze a changelog.
+The release action is **manual only**. After this workflow is merged into `master`:
+
+1. Create a separate **public** repository called `ertanturan/sabl-pdf-releases`; the SABL source repository is private.
+2. Add a GitHub Actions secret called `PUBLIC_RELEASE_TOKEN` to the private source repository. Use a fine-grained token with Contents read/write permission limited to the public releases repository. Allow GitHub Actions to create PRs, and ensure repository rules allow the release bot to push release branches and tags.
+3. Edit `docs/changelog/current.md` on `master` to describe what is shipping. Use the four required categories.
+4. Open **Actions > Publish Windows installer > Run workflow** on the `master` branch and choose `minor`, `secondary` or `major`. The default is `minor`.
+5. GitHub validates changelog history, increases the selected component, runs the tests, builds and smoke-tests the installer, generates its SHA-256 checksum, and publishes a versioned installer with only this release's notes to the public distribution repository.
+6. GitHub opens a release-record PR back to the private source repository. **Merge this PR manually before starting another release**, keeping project versions and changelog history in sync.
+
+A failed workflow does not publish a successful release automatically; a staged draft or release branch may require manual inspection. Check the run's results before sharing a download.
+
+A local `build.cmd` does not publish a release or increment any component by default. For an explicit local version change, `build.cmd -Minor`, `build.cmd -Secondary` or `build.cmd -Major` remain available, and `build.cmd -NoVersionBump` explicitly preserves the version. A local change must be committed through a PR before an official GitHub release. The tagged source commit and release snapshots must stay unchanged.
 
 After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen. Use **Ctrl+F** to search, **Ctrl+S** to save, or **File > Save as** to write a separate copy.
 
