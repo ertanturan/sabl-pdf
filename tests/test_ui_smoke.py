@@ -598,3 +598,57 @@ def test_drag_text_selection_and_copy(sample_pdf, monkeypatch) -> None:
     assert window.canvas.selected_text() == ""
     monkeypatch.setattr(window, "_confirm_changes", lambda: True)
     window.close()
+
+
+def test_redaction_search_dialog_creates_verified_copy(sample_pdf, tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication, QDialog, QFileDialog, QInputDialog, QMessageBox
+    from sabl_pdf.ui.redaction_actions import RedactionReviewDialog
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.open_path(sample_pdf)
+    destination = tmp_path / "verified.pdf"
+    monkeypatch.setattr(QInputDialog, "getText", lambda *args: ("Hello", True))
+    monkeypatch.setattr(RedactionReviewDialog, "exec", lambda self: QDialog.DialogCode.Accepted)
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: QMessageBox.StandardButton.Yes)
+    monkeypatch.setattr(QMessageBox, "information", lambda *args: None)
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: (str(destination), ""))
+
+    window.redact_information()
+
+    assert application is not None
+    with fitz.open(destination) as redacted:
+        assert redacted[0].get_text() == ""
+        assert len(redacted[0].get_images(full=True)) == 1
+    assert "Hello" in window.session.document[0].get_text()
+    window.close()
+
+
+def test_redact_selected_native_text(sample_pdf, tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    import fitz
+    from PySide6.QtWidgets import QApplication, QFileDialog, QMessageBox
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    window = MainWindow()
+    window.open_path(sample_pdf)
+    chars = window.session.document[0].get_text("rawdict")["blocks"][0]["lines"][0]["spans"][0]["chars"]
+    selection = window.viewer.select_text(
+        0, (chars[0]["bbox"][0], 45), (chars[4]["bbox"][2], 45)
+    )
+    window.canvas._text_selection = selection
+    destination = tmp_path / "selection.pdf"
+    monkeypatch.setattr(QMessageBox, "warning", lambda *args: QMessageBox.StandardButton.Yes)
+    monkeypatch.setattr(QMessageBox, "information", lambda *args: None)
+    monkeypatch.setattr(QFileDialog, "getSaveFileName", lambda *args: (str(destination), ""))
+
+    window.redact_selected_text()
+
+    assert application is not None
+    with fitz.open(destination) as document:
+        assert document[0].get_text() == ""
+    window.close()
