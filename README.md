@@ -37,7 +37,7 @@ The PowerShell equivalents are `./scripts/run.ps1`, `./scripts/test.ps1` and `./
 
 ### Build version numbers
 
-A local build increments the last component of the version by default. SABL uses `x.y.z` with `x` as major, `y` as secondary and `z` as minor.
+The manually triggered GitHub release workflow increments the version automatically. SABL uses `x.y.z` with `x` as major, `y` as secondary and `z` as minor. Ordinary local and CI builds preserve their current version.
 
 | Command | Example from `0.1.9` |
 | --- | --- |
