@@ -46,7 +46,7 @@ First public release. This draft covers the history of changes included in the b
 - Support edge-scrolling toward destination pages and reject invalid drops.
 - Find Inno Setup reliably when the Windows build script runs.
 - Let the first GitHub Release proceed without a previously published release.
-- Resolve PySide6 imports during Windows release type checks using the installed virtual environment.
+- Resolve PySide6 imports in release type checks using the installed virtual environment.
 
 ## Performance improvements
 - Render pages near the visible PDF viewport instead of all pages at once.
