@@ -162,7 +162,8 @@ class RedactionService:
                 raise RuntimeError("Redaction verification failed: active PDF objects")
             for index in range(len(document)):
                 page = document[index]
-                if page.get_text("text").strip() or page.get_links():
+                text = page.get_text("text")
+                if not isinstance(text, str) or text.strip() or page.get_links():
                     raise RuntimeError("Redaction verification failed: surviving text or links")
                 if list(page.annots() or ()) or list(page.widgets() or ()):
                     raise RuntimeError("Redaction verification failed: annotations or fields")
