@@ -55,7 +55,7 @@ Installed SABL: Qt update checker
 - Use nonblocking Qt networking in the UI coordinator. Query `/repos/ertanturan/sabl-pdf/releases/latest`; handle 404/no releases, limits, TLS, timeouts, and malformed responses. Prefer ETag conditional requests and a 24-hour cache. Skip drafts and prereleases.
 - Reject versions less than or equal to the installed version, non-`vMAJOR.MINOR.PATCH` tags, unknown architectures, or missing manifest/installer assets. Do not infer a download URL from an arbitrary release description.
 - Use release-specific GitHub body text for the update dialog, never the cumulative `CHANGELOG.md`. Validate/limit displayed Markdown and never execute links or scripts from it.
-- Keep a single update check/download active, support user cancellation, and remember a skipped version. Manual checks bypass the 24-hour automatic-check limit.
+- Keep a single update check/download active, and let users cancel future downloads. Manual checks bypass the 24-hour automatic-check limit. Closing update notes never hides the persistent indicator.
 
 ### Safe one-click installer handoff
 
