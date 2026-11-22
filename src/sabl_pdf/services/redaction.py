@@ -99,7 +99,7 @@ class RedactionService:
         document = self._session.document
         if document.is_encrypted or document.needs_pass:
             raise ValueError("Protected PDFs are not supported for secure redaction")
-        if document.get_sigflags() or document.is_repaired or self._session.open_warnings:
+        if document.get_sigflags() > 0 or document.is_repaired or self._session.open_warnings:
             raise ValueError("Signed or damaged PDFs cannot be safely redacted")
 
     def _validate(self, targets: list[RedactionTarget]) -> None:
@@ -154,7 +154,7 @@ class RedactionService:
         with fitz.open(candidate) as document:
             if len(document) != len(self._session.document):
                 raise RuntimeError("Redaction verification failed: page count")
-            if document.embfile_count() or document.get_sigflags():
+            if document.embfile_count() or document.get_sigflags() > 0:
                 raise RuntimeError("Redaction verification failed: active PDF objects")
             for index, page in enumerate(document):
                 if page.get_text("text").strip() or page.get_links():
