@@ -79,7 +79,9 @@ See [backlog.md](backlog.md) for proposed work, not shipped features.
 
 ## PDF file association
 
-The installer registers SABL PDF as an available PDF app. On Windows 10/11, select it through **Settings > Apps > Default apps** if you want it as the default. Installation does not change your preference automatically.
+The Windows installer registers SABL PDF as a PDF handler and refreshes Explorer's file associations. After installing, select **Set as default PDF app** on the welcome screen or under **File**. This opens Windows **Settings > Apps > Default apps**. On supported Windows 11 versions, SABL PDF's settings open directly; otherwise find `.pdf` and select **SABL PDF**. Once selected, double-clicking PDF files in Explorer opens them in SABL PDF.
+
+Windows controls the default app. Installation and the button never change your preference automatically. Running from source does not register the app; use the installer before selecting it. You can change your default PDF app again at any time through Windows Settings.
 
 ## Contributing
 
