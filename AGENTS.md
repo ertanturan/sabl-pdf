@@ -67,6 +67,12 @@
 - Never hand-edit generated cumulative history. Release automation and CI must verify every previous version's byte-for-byte integrity against its published commit.
 - All GitHub Releases must contain only the matching version's new features, bugfixes, performance improvements, and documentation changes. Enable immutable GitHub Releases to protect published notes, tags, and assets.
 
+## Build versioning
+- Normal local `build.cmd` and `scripts/build.ps1` invocations increase the last (`z`) component of `x.y.z` exactly once after prerequisites are available. Explicit `-Minor` does the same; `-Secondary` increases `y` and resets `z`; `-Major` increases `x` and resets `y.z`.
+- Bumping must synchronise project metadata, Python application version and installer version before testing and packaging. Treat `pyproject.toml` as authoritative.
+- Tagged release builds MUST use `-NoVersionBump` and must reject a tag differing from the version files; a release must be reproducible from its tagged commit.
+- Never modify any published changelog as a side effect of version bumps. Only the current unreleased draft is writable when the changelog implementation is added.
+
 ## Distribution
 - Ship a Windows installer using PyInstaller with Inno Setup.
 - Register a stable PDF ProgID with Windows. Offer PDF association; respect the user-controlled default application setting.
