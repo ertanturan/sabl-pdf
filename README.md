@@ -22,7 +22,7 @@ It runs offline and requires no account or subscription. It does not include adv
 - **Compression:** Optimise PDF object streams and optionally recompress images. Savings depend on the file.
 - **Conversion:** Add images as PDF pages or export PDF pages as PNG files.
 - **OCR:** Recognise scanned-page text locally using Tesseract OCR and export it as text. Tesseract OCR support and language data must be available.
-- **Release notes:** View the installed version's changelog offline with **Help > What's New**, even without a PDF open.
+- **Release notes:** View the installed version's changelog offline with **Help > What's New**, even without a PDF open. New versions also show their notes after an upgrade; the Help action remains available.
 
 ## Run from source (Windows)
 
