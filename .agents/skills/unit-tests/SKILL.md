@@ -69,6 +69,15 @@ Unit tests must be straight-line Arrange, Act, Assert code. A test documents beh
 - Assert externally observable behavior rather than private implementation details.
 - Put reusable setup and cleanup in fixtures; do not hide the Act or Assert phases in helpers.
 
+## Failed tests are defects, not a color target
+
+- Investigate each failure and establish whether production behavior or the test expectation is wrong.
+- If the application violates a valid requirement, fix application code and add or retain a regression test. Never change an assertion to match incorrect behavior.
+- Never remove, skip, xfail, suppress, weaken, mock away, or replace meaningful failing tests solely to obtain a passing CI run.
+- A test may be corrected only with evidence that its previous expectation was incorrect or obsolete; explain the evidence and retain an equally strong behavioral check.
+- Never reduce coverage enforcement, narrow collected source files, or add exclusions merely to pass the coverage gate.
+- If the root defect is not fixed, explicitly report the blocker and leave the check failing. Push back on requests to hide or bypass it.
+
 ## Validation
 
 Run the focused test first, then the project checks before opening a PR:

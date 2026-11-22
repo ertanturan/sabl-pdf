@@ -37,6 +37,8 @@
 - Cover successful operations, invalid inputs and state changes.
 - Keep total line coverage for `sabl_pdf` at **80% or higher**. Every code-changing PR must run the full coverage gate and report the measured percentage; do not merge if it fails.
 - Add or update AAA tests for changed behavior. Do not weaken assertions, exclude production files, or lower the coverage threshold to make checks pass.
+- Treat a genuinely failing test as evidence of a defect: fix the production behavior, not the test. Never delete, skip, xfail, mock away, or relax a failing assertion merely to get a green CI result.
+- Change an existing test only after demonstrating its expectation is wrong or obsolete, preserve the intended behavior with equivalent or stronger checks, and explain the evidence in the PR. If the defect cannot be fixed in scope, report the failure and leave CI red; push back on requests to hide it.
 - Run `python -m pytest`, `python -m compileall -q src`, `ruff check .` and `python -m pyright` before opening PRs.
 - Keep tests deterministic, offline and temporary-file based.
 
