@@ -77,15 +77,28 @@ def generate_history(root: Path) -> str:
 
 
 def previous_snapshots_unchanged(root: Path) -> None:
+    result = subprocess.run(
+        ["git", "tag", "--list", "v*"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    tags = {tag for tag in result.stdout.splitlines() if TAG_PATTERN.fullmatch(tag)}
     for path in snapshot_files(root):
-        tag = path.stem
+        if path.stem not in tags:
+            raise ValueError(f"Release snapshot has no published tag: {path.relative_to(root)}")
+    for tag in tags:
+        path = root / RELEASES / f"{tag}.md"
         original = subprocess.run(
             ["git", "show", f"{tag}:{path.relative_to(root).as_posix()}"],
             cwd=root,
             capture_output=True,
             check=False,
         )
-        if original.returncode != 0 or original.stdout != path.read_bytes():
+        if original.returncode == 0 and (
+            not path.exists() or original.stdout != path.read_bytes()
+        ):
             raise ValueError(f"Published changelog cannot change: {path.relative_to(root)}")
 
 
