@@ -164,3 +164,15 @@ def test_release_dispatches_checks_for_bot_created_pr() -> None:
     assert "  workflow_dispatch:" in ci
     assert "gh pr create -R $env:GITHUB_REPOSITORY" in release
     assert "gh workflow run ci.yml --ref $env:RELEASE_BRANCH" in release
+
+
+def test_first_release_lookup_uses_successful_list_command() -> None:
+    workflow_path = ROOT / ".github" / "workflows" / "installer.yml"
+
+    workflow = workflow_path.read_text(encoding="utf-8")
+
+    assert "gh release view $tag" not in workflow
+    assert "gh release list -R $env:GITHUB_REPOSITORY --limit 1000" in workflow
+    assert "if ($LASTEXITCODE -ne 0) { throw 'Cannot check existing GitHub Releases.' }" in workflow
+    assert 'if ($releaseTags -contains $tag) { throw "Release $tag already exists." }' in workflow
+    assert workflow.index("gh release list") < workflow.index('"version=$version" >> $env:GITHUB_OUTPUT')

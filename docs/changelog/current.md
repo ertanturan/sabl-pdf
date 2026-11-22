@@ -45,6 +45,7 @@ First public release. This draft covers the history of changes included in the b
 - Preserve placed annotations when dragging across PDF pages.
 - Support edge-scrolling toward destination pages and reject invalid drops.
 - Find Inno Setup reliably when the Windows build script runs.
+- Let the first GitHub Release proceed without a previously published release.
 
 ## Performance improvements
 - Render pages near the visible PDF viewport instead of all pages at once.
