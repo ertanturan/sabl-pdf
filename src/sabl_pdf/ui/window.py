@@ -29,9 +29,11 @@ from sabl_pdf.services.conversion import ConversionService
 from sabl_pdf.ui.conversion_actions import ConversionActions
 from sabl_pdf.services.ocr import OcrService
 from sabl_pdf.ui.ocr_actions import OcrActions
+from sabl_pdf.services.redaction import RedactionService
+from sabl_pdf.ui.redaction_actions import RedactionActions
 
 
-class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, OcrActions, QMainWindow):
+class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, AnnotationActions, CompressionActions, ConversionActions, OcrActions, RedactionActions, QMainWindow):
 
     def __init__(
         self, session: DocumentSession | None = None, settings: QSettings | None = None
@@ -52,6 +54,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.compression = CompressionService(self.session)
         self.conversion = ConversionService(self.session)
         self.ocr = OcrService(self.session)
+        self.redaction = RedactionService(self.session)
         self.page_index = 0
         self.zoom = 1.0
         self._selection_action: Callable[[tuple], None] | None = None
@@ -145,9 +148,17 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(tools, "Export pages as images", self.export_images)
         self._action(tools, "OCR current page", self.ocr_page)
         self._action(tools, "Export OCR text", self.export_ocr)
+        self._action(tools, "Redact information", self.redact_information)
+        self._action(tools, "Redact an area", self.redact_area)
 
 
     def _connect_tab(self, tab: DocumentTab) -> None:
+        tab.canvas.redact_text_requested.connect(
+            lambda: self._from_tab(tab, self.redact_selected_text)
+        )
+        tab.canvas.redact_area_requested.connect(
+            lambda: self._from_tab(tab, self.redact_area)
+        )
         tab.canvas.copy_text_requested.connect(
             lambda: self._from_tab(tab, self.copy_selection)
         )
@@ -196,7 +207,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
     def _restore_document(self, tab: DocumentTab) -> None:
         for name in (
             "session", "viewer", "text_boxes", "placed_items", "forms", "signatures", "pages",
-            "annotations", "compression", "conversion", "ocr", "canvas",
+            "annotations", "compression", "conversion", "ocr", "redaction", "canvas",
         ):
             setattr(self, name, getattr(tab, name))
         self.page_index = tab.page_index
