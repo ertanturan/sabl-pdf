@@ -70,7 +70,7 @@
 ## Build versioning
 - Only the manually triggered `Publish Windows installer` GitHub Actions workflow increases a version automatically. It defaults to the last (`z`) component of `x.y.z`; selecting `secondary` increases `y` and resets `z`, while `major` increases `x` and resets `y.z`. Ordinary CI checks and local builds preserve the existing version. Explicit local `-Minor`, `-Secondary` and `-Major` remain available for deliberate development builds.
 - Bumping must synchronise project metadata, Python application version and installer version before testing and packaging. Treat `pyproject.toml` as authoritative.
-- Tagged release builds MUST use `-NoVersionBump` and must reject a tag differing from the version files; a release must be reproducible from its tagged commit.
+- The manual release action must bump once, freeze only the current release's four changelog sections, run Windows tests and installer smoke checks, then publish its versioned binary to the public distribution repository. The packaging step MUST use `-NoVersionBump`; the build itself must not change the prepared release version. The source tag and generated release-record PR must match the installer. Never auto-merge the record PR.
 - Never modify any published changelog as a side effect of version bumps. Only the current unreleased draft is writable when the changelog implementation is added.
 
 ## Distribution
