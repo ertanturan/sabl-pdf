@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 import subprocess
 
-from versioning import VERSION_PATTERN, bump_version, check_version, next_version
+from versioning import bump_version, check_version, next_version
 
 
 ROOT = Path(__file__).resolve().parents[1]
