@@ -161,7 +161,9 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             lambda: self._from_tab(tab, self._on_selection_cancelled)
         )
         tab.canvas.item_move_requested.connect(
-            lambda page, xref, bounds: self._from_tab(tab, self._on_item_moved, page, xref, bounds)
+            lambda page, xref, target, bounds: self._from_tab(
+                tab, self._on_item_moved, page, xref, target, bounds
+            )
         )
         tab.canvas.item_delete_requested.connect(
             lambda page, xref: self._from_tab(tab, self._on_item_deleted, page, xref)
@@ -574,10 +576,10 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         if action is not None:
             self._run(lambda: action(rect))
 
-    def _on_item_moved(self, page: int, xref: int, bounds: tuple) -> None:
+    def _on_item_moved(self, page: int, xref: int, target: int, bounds: tuple) -> None:
         def move() -> None:
-            self.placed_items.move(page, xref, bounds)
-            self.page_index = page
+            self.placed_items.move(page, xref, bounds, target_page_index=target)
+            self.page_index = target
             self._after_edit()
         self._run(move)
 

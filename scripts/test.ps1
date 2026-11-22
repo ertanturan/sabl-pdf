@@ -17,9 +17,10 @@ function Invoke-Check {
 Push-Location $projectRoot
 try {
     $env:QT_QPA_PLATFORM = 'offscreen'
-    Invoke-Check -Arguments @('-m', 'pytest', '-q')
+    Invoke-Check -Arguments @('-m', 'pytest', '-q', '--cov=sabl_pdf', '--cov-report=term-missing', '--cov-fail-under=80')
     Invoke-Check -Arguments @('-m', 'compileall', '-q', 'src')
     Invoke-Check -Arguments @('-m', 'ruff', 'check', '.')
+    Invoke-Check -Arguments @('-m', 'pyright', '--pythonpath', $pythonPath)
 } finally {
     [Environment]::SetEnvironmentVariable('QT_QPA_PLATFORM', $previousPlatform, 'Process')
     Pop-Location
