@@ -1,11 +1,8 @@
 from pathlib import Path
 import shutil
 import subprocess
-import sys
 
 import pytest
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from release import format_notes, generate_history, latest_tag, prepare_release, validate_notes, verify_history
 
