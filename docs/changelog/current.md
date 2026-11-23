@@ -4,12 +4,10 @@
 - None.
 
 ## Bugfixes
-- Restore text search and selection on scanned PDFs through local OCR. (#74)
-- Correct search result scrolling and highlighting on rotated pages. (#74)
+- None.
 
 ## Performance improvements
 - None.
 
 ## Documentation
-- Add installer download details and Windows distribution guidance. (#76)
-- Document automated WinGet manifest submissions for new releases. (#77)
+- None.
