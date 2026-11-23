@@ -6,13 +6,11 @@
 
 The Windows x64 installer is named `Simple-PDF-Setup-vX.Y.Z-x64.exe`. Download it from GitHub Releases and run it to install Simple PDF. If you prefer to run from source, see [Run from source](#run-from-source-windows).
 
-# Video
+## See Simple PDF in action
 
-
+Watch a short preview of the Windows app before downloading it.
 
 https://github.com/user-attachments/assets/018b59c9-d6df-444e-9efa-a0dfa5ada268
-
-
 
 ## Features
 
