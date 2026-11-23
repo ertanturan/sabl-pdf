@@ -58,3 +58,34 @@ def test_rejects_click_without_drag(session) -> None:
     result = service.select(0, (char[0] + 1, char[1] + 1), (char[0] + 1, char[1] + 1))
 
     assert result is None
+
+def test_drag_can_start_near_the_first_glyph(session) -> None:
+    service = TextSelectionService(session)
+
+    selection = service.select(0, (42, 45), (58, 45))
+
+    assert selection is not None
+    assert selection.text == "H"
+
+
+def test_ocr_fallback_supplies_selectable_characters(session, monkeypatch) -> None:
+    from unittest.mock import Mock
+    from sabl_pdf.services.text_selection import TextGlyph
+
+    service = TextSelectionService(session)
+    glyphs = [
+        TextGlyph("N", 0, (50.0, 40.0, 60.0, 55.0)),
+        TextGlyph("e", 0, (60.0, 40.0, 70.0, 55.0)),
+    ]
+    selection_glyphs = Mock(side_effect=[[], glyphs])
+    monkeypatch.setattr(service, "_glyphs", selection_glyphs)
+    monkeypatch.setattr(service._ocr_pages, "is_candidate", Mock(return_value=True))
+    ocr_get = Mock(return_value=(session.document[0], session.document[0].get_textpage()))
+    monkeypatch.setattr(service._ocr_pages, "get", ocr_get)
+
+    selection = service.select(0, (51, 47), (70, 47))
+
+    assert selection is not None
+    assert selection.text == "Ne"
+    assert ocr_get.call_count == 1
+    assert selection_glyphs.call_count == 2

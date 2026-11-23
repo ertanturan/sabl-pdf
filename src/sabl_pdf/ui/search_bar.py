@@ -56,7 +56,12 @@ class SearchBar(QWidget):
         self.hide()
 
     def set_position(self, index: int, count: int) -> None:
+        self.results.setToolTip("")
         self.results.setText(f"{index + 1} of {count}" if count else "No matches")
+
+    def set_error(self, message: str) -> None:
+        self.results.setText("OCR unavailable")
+        self.results.setToolTip(message)
 
     def set_query(self, query: str) -> None:
         self._timer.stop()

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import fitz
 
 from sabl_pdf.core.session import DocumentSession
+from sabl_pdf.services.ocr_text import OcrTextPages
 
 
 @dataclass(frozen=True)
@@ -21,8 +22,11 @@ class TextSelection:
 
 
 class TextSelectionService:
-    def __init__(self, session: DocumentSession) -> None:
+    def __init__(
+        self, session: DocumentSession, ocr_pages: OcrTextPages | None = None
+    ) -> None:
         self._session = session
+        self._ocr_pages = ocr_pages or OcrTextPages(session)
 
     def select(
         self,
@@ -32,11 +36,15 @@ class TextSelectionService:
     ) -> TextSelection | None:
         page = self._session.document[page_index]
         glyphs = self._glyphs(page)
-        if not glyphs:
-            return None
         source = fitz.Point(start) * page.derotation_matrix
         target = fitz.Point(end) * page.derotation_matrix
-        first = self._caret(glyphs, source, require_near=True)
+        first = self._caret(glyphs, source, require_near=True) if glyphs else None
+        if first is None and self._ocr_pages.is_candidate(page):
+            ocr_page, textpage = self._ocr_pages.get(page_index)
+            glyphs = self._glyphs(ocr_page, textpage)
+            first = self._caret(glyphs, source, require_near=True) if glyphs else None
+        if first is None:
+            return None
         last = self._caret(glyphs, target, require_near=False)
         if first is None or last is None or first == last:
             return None
@@ -45,10 +53,12 @@ class TextSelectionService:
         display = tuple(self._bounds(fitz.Rect(rect) * page.rotation_matrix) for rect in rects)
         return TextSelection(page_index, self._text(selected), rects, display)
 
-    def _glyphs(self, page: fitz.Page) -> list[TextGlyph]:
+    def _glyphs(
+        self, page: fitz.Page, textpage: fitz.TextPage | None = None
+    ) -> list[TextGlyph]:
         glyphs: list[TextGlyph] = []
         line_number = 0
-        raw = page.get_text("rawdict")
+        raw = page.get_text("rawdict", textpage=textpage)
         if not isinstance(raw, dict):
             raise ValueError("Cannot extract PDF character geometry")
         for block in raw["blocks"]:
@@ -72,7 +82,7 @@ class TextSelectionService:
             ) ** 2
 
         index = min(range(len(glyphs)), key=lambda item: distance(glyphs[item]))
-        if require_near and distance(glyphs[index]) > 25:
+        if require_near and distance(glyphs[index]) > 100:
             return None
         bounds = fitz.Rect(glyphs[index].bounds)
         after = point.x >= (bounds.x0 + bounds.x1) / 2

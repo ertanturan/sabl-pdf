@@ -12,6 +12,7 @@ class PdfCanvas(QGraphicsView):
     item_move_requested = Signal(int, int, int, tuple)
     item_delete_requested = Signal(int, int)
     copy_text_requested = Signal()
+    text_selection_error = Signal(str)
     redact_text_requested = Signal()
     redact_area_requested = Signal()
 
@@ -261,7 +262,12 @@ class PdfCanvas(QGraphicsView):
                   (start.y() - bounds.top()) / self._zoom)
         destination = ((end_x - bounds.left()) / self._zoom,
                        (end_y - bounds.top()) / self._zoom)
-        selection = self._text_selector(page, origin, destination)
+        try:
+            selection = self._text_selector(page, origin, destination)
+        except RuntimeError as exc:
+            self.clear_text_selection()
+            self.text_selection_error.emit(str(exc))
+            return
         self.clear_text_selection()
         if selection is None:
             return
@@ -281,6 +287,17 @@ class PdfCanvas(QGraphicsView):
             self._scene.removeItem(self._search_highlight)
             self._search_highlight = None
 
+    def scroll_to_region(self, page: int, bounds: tuple[float, float, float, float]) -> None:
+        if not 0 <= page < len(self._page_rects):
+            return
+        x0, y0, x1, y1 = bounds
+        origin = self._page_rects[page].topLeft()
+        self.centerOn(
+            origin.x() + (x0 + x1) * self._zoom / 2,
+            origin.y() + (y0 + y1) * self._zoom / 2,
+        )
+        self._viewport_changed()
+
     def highlight(self, bounds: tuple[float, float, float, float], page: int) -> None:
         self.clear_search_highlight()
         x0, y0, x1, y1 = bounds
@@ -290,6 +307,7 @@ class PdfCanvas(QGraphicsView):
                    (x1 - x0) * self._zoom, (y1 - y0) * self._zoom),
             QPen(QColor("#e6aa00"), 2), QBrush(QColor(255, 210, 0, 70)),
         )
+        self._search_highlight.setZValue(16)
 
     def _page_at(self, position) -> int | None:
         for index, rect in enumerate(self._page_rects):

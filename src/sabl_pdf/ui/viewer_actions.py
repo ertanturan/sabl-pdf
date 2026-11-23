@@ -43,7 +43,14 @@ class ViewerActions:
             self.search_bar.focus_query()
 
     def _search_query(self, query: str) -> None:
-        self._search_matches = self.viewer.search(query) if query.strip() else []
+        try:
+            self._search_matches = self.viewer.search(query) if query.strip() else []
+        except RuntimeError as exc:
+            self._search_matches = []
+            self._search_index = -1
+            self.canvas.clear_search_highlight()
+            self.search_bar.set_error(str(exc))
+            return
         self._search_index = 0 if self._search_matches else -1
         self._show_search_match()
 
@@ -60,7 +67,7 @@ class ViewerActions:
             return
         match = self._search_matches[self._search_index]
         self.page_index = match.page
-        self.canvas.scroll_to_page(match.page)
+        self.canvas.scroll_to_region(match.page, match.bounds)
         self.canvas.highlight(match.bounds, match.page)
 
     def _close_search(self) -> None:

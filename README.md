@@ -14,7 +14,7 @@ It runs offline and requires no account or subscription. It does not include adv
 
 ## Features
 
-- **Viewing:** Open PDFs in separate tabs, search existing text, zoom, use page thumbnails and select or copy text.
+- **Viewing:** Open PDFs in separate tabs, find and select text (including scanned text through local OCR), zoom, use page thumbnails and copy selections.
 - **Text and forms:** Add, edit, move or remove text-box annotations; fill PDF text and checkbox fields.
 - **Signatures:** Draw and reuse a signature, or place a PNG/JPEG signature image.
 - **Pages:** Merge PDFs, split page ranges, delete, rotate or reorder pages.
@@ -76,7 +76,7 @@ After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen.
 
 - Text boxes are editable annotations; Simple PDF does **not** modify existing page text in place.
 - Drawn or image signatures are visual marks, **not** certificate-based digital signatures.
-- OCR can extract text, but does **not** yet make scanned PDFs searchable within the PDF. Normal Find searches an existing text layer.
+- Find and selection use local OCR on scanned pages when Tesseract English data is installed. Recognition may take longer on large documents and may miss unclear text. OCR text is not embedded into saved PDFs.
 - **Redacted output is image-only:** Text selection, links, forms, signatures and vector detail are not preserved in the new copy. The original stays unchanged. Review all regions, particularly scanned text: OCR can miss matches. Protected, signed and damaged PDFs are refused.
 
 See [backlog.md](backlog.md) for proposed work, not shipped features.
