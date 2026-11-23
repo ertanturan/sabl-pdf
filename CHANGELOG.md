@@ -1,5 +1,20 @@
 # Changelog
 
+# v1.0.3 (2026-11-23)
+
+## New features
+- Install verified updates directly from the update notification.
+- Keep a View on GitHub option beside Update now.
+
+## Bugfixes
+- None.
+
+## Performance improvements
+- None.
+
+## Documentation
+- None.
+
 # v1.0.2 (2026-11-23)
 
 ## New features
