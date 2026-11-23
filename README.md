@@ -1,8 +1,10 @@
 # Simple PDF
 
-Simple PDF is a Windows desktop app for opening, reviewing and making common changes to PDF files without uploading documents to a service. You can work with several PDFs in tabs, fill forms, add text and signatures, annotate pages, reorganise pages and save the result locally.
+**A free, offline PDF editor for Windows.** Open and annotate PDFs, fill forms, sign documents, redact sensitive information, and merge, split or organise pages. Your documents stay on your computer: no account, subscription, advertising, telemetry or cloud upload.
 
-It runs offline and requires no account or subscription. It does not include advertising or telemetry.
+**[Download the latest Windows installer](https://github.com/ertanturan/sabl-pdf/releases/latest)** | [All releases and checksums](https://github.com/ertanturan/sabl-pdf/releases) | [Source code](https://github.com/ertanturan/sabl-pdf)
+
+The Windows x64 installer is named `Simple-PDF-Setup-vX.Y.Z-x64.exe`. Download it from GitHub Releases and run it to install Simple PDF. If you prefer to run from source, see [Run from source](#run-from-source-windows).
 
 ## Tech Stack
 
