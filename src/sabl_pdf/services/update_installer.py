@@ -48,7 +48,7 @@ def parse_installer_asset(payload: bytes, expected_version: str) -> InstallerAss
     url = asset.get("browser_download_url")
     digest = asset.get("digest")
     size = asset.get("size")
-    if url != f"{RELEASE_DOWNLOADS}/{tag}/{filename}":
+    if not isinstance(url, str) or url != f"{RELEASE_DOWNLOADS}/{tag}/{filename}":
         raise ValueError("Installer download URL is not trusted")
     if not isinstance(digest, str) or re.fullmatch(r"sha256:[a-fA-F0-9]{64}", digest) is None:
         raise ValueError("Installer has no valid SHA-256 digest")
