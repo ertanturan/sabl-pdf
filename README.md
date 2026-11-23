@@ -18,7 +18,7 @@ The Windows x64 installer is named `Simple-PDF-Setup-vX.Y.Z-x64.exe`. Download i
 - **Conversion:** Add images as PDF pages or export PDF pages as PNG files.
 - **OCR:** Recognise scanned-page text locally using Tesseract OCR and export it as text. Tesseract OCR support and language data must be available.
 - **Release notes:** Read the installed version's changelog offline with **Help > What's New**. Notes also appear after upgrades and remain accessible.
-- **Updates:** Check GitHub Releases on startup, at most once per 24 hours. A persistent status button shows newer versions and their changes. Use **Help > Check for Updates** anytime or turn off automatic checks under Help. Installation remains manual.
+- **Updates:** Check GitHub Releases on startup, at most once per 24 hours. Click the persistent update notice, then **Update now** to download a SHA-256 verified installer, install it and relaunch Simple PDF automatically. **View on GitHub** remains available. Use **Help > Check for Updates** anytime or disable automatic checks under Help. One-click installation requires the installed Windows app, not a source checkout.
 
 ## Tech Stack
 
