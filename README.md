@@ -6,14 +6,6 @@
 
 The Windows x64 installer is named `Simple-PDF-Setup-vX.Y.Z-x64.exe`. Download it from GitHub Releases and run it to install Simple PDF. If you prefer to run from source, see [Run from source](#run-from-source-windows).
 
-## Tech Stack
-
-- **Python 3.12+** for the application and PDF services.
-- **PySide6 (Qt)** for the Windows desktop interface.
-- **PyMuPDF** for PDF rendering, text extraction and document operations.
-- **Pillow** for image handling; **Tesseract OCR** for scanned-page text recognition through PyMuPDF.
-- **PyInstaller** for executable packaging and **Inno Setup 6** for the Windows installer.
-
 ## Features
 
 - **Viewing:** Open PDFs in separate tabs, find and select text (including scanned text through local OCR), zoom, use page thumbnails and copy selections.
@@ -27,6 +19,14 @@ The Windows x64 installer is named `Simple-PDF-Setup-vX.Y.Z-x64.exe`. Download i
 - **OCR:** Recognise scanned-page text locally using Tesseract OCR and export it as text. Tesseract OCR support and language data must be available.
 - **Release notes:** Read the installed version's changelog offline with **Help > What's New**. Notes also appear after upgrades and remain accessible.
 - **Updates:** Check GitHub Releases on startup, at most once per 24 hours. A persistent status button shows newer versions and their changes. Use **Help > Check for Updates** anytime or turn off automatic checks under Help. Installation remains manual.
+
+## Tech Stack
+
+- **Python 3.12+** for the application and PDF services.
+- **PySide6 (Qt)** for the Windows desktop interface.
+- **PyMuPDF** for PDF rendering, text extraction and document operations.
+- **Pillow** for image handling; **Tesseract OCR** for scanned-page text recognition through PyMuPDF.
+- **PyInstaller** for executable packaging and **Inno Setup 6** for the Windows installer.
 
 ## Run from source (Windows)
 
@@ -94,3 +94,5 @@ Windows controls the default app. Installation and the button never change your 
 When `master` changes, GitHub Actions rebases same-repository PR stacks in dependency order. A conflict gate blocks Windows CI until a PR merges cleanly with its base. Conflicting rebases require manual resolution; fork PR branches are not force-pushed. CI is explicitly restarted after bot rebases.
 
 See [AGENTS.md](AGENTS.md) for the architecture, testing requirements, commit and PR conventions, and change-log rules.
+
+See [distribution guidance](docs/distribution.md) for software-directory listing details and WinGet submission steps.
