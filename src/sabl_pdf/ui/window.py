@@ -1,17 +1,21 @@
 from collections.abc import Callable
 from pathlib import Path
+import os
+import sys
 import time
 
 from PySide6.QtCore import QSettings, QSize, Qt, QTimer, QUrl
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
-from PySide6.QtWidgets import QLabel, QMainWindow, QMessageBox, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget, QPushButton
+from PySide6.QtWidgets import QDialog, QLabel, QMainWindow, QMessageBox, QProgressDialog, QStackedWidget, QStyle, QTabWidget, QToolBar, QVBoxLayout, QWidget, QPushButton
 
 from sabl_pdf import __version__
 from sabl_pdf.branding import DISPLAY_NAME
 from sabl_pdf.services.release_notes import installed_release_notes
+from sabl_pdf.services.update_launcher import launch_verified_installer
 from sabl_pdf.services.updates import AvailableUpdate, automatic_check_due, parse_latest_release
 from sabl_pdf.ui.update_available_dialog import UpdateAvailableDialog
+from sabl_pdf.ui.update_download_thread import UpdateDownloadThread
 from sabl_pdf.ui.whats_new_dialog import WhatsNewDialog
 from sabl_pdf.ui.default_apps import open_default_apps_settings
 from sabl_pdf.core.session import DocumentSession
@@ -53,6 +57,11 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._pending_update_reply: QNetworkReply | None = None
         self._manual_update_check = False
         self._available_update: AvailableUpdate | None = None
+        self._update_thread: UpdateDownloadThread | None = None
+        self._update_progress: QProgressDialog | None = None
+        self._downloaded_installer: Path | None = None
+        self._download_error: str | None = None
+        self._closing_for_update = False
         self._initial_session = session
         self._active_tab: DocumentTab | None = None
         self._empty_session = session or DocumentSession()
@@ -282,8 +291,90 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self.update_notice.show()
 
     def show_available_update(self) -> None:
-        if self._available_update is not None:
-            UpdateAvailableDialog(__version__, self._available_update, self).exec()
+        if self._available_update is None:
+            return
+        can_install = sys.platform == "win32" and bool(getattr(sys, "frozen", False))
+        dialog = UpdateAvailableDialog(
+            __version__, self._available_update, self, can_install=can_install
+        )
+        if dialog.exec() == QDialog.DialogCode.Accepted and can_install:
+            self._start_update_download()
+
+    def _start_update_download(self) -> None:
+        if self._update_thread is not None or self._available_update is None:
+            return
+        self._downloaded_installer = None
+        self._download_error = None
+        progress = QProgressDialog("Fetching the verified installer...", "Cancel", 0, 0, self)
+        progress.setWindowTitle("Updating Simple PDF")
+        progress.setMinimumDuration(0)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
+        progress.canceled.connect(self._cancel_update_download)
+        self._update_progress = progress
+        thread = UpdateDownloadThread(self._available_update.version)
+        self._update_thread = thread
+        thread.progress.connect(self._report_update_progress)
+        thread.downloaded.connect(self._record_downloaded_installer)
+        thread.failed.connect(self._record_update_error)
+        thread.finished.connect(self._finish_update_download)
+        progress.show()
+        thread.start()
+
+    def _report_update_progress(self, received: int, total: int) -> None:
+        if self._update_progress is not None:
+            self._update_progress.setLabelText("Downloading Simple PDF update...")
+            self._update_progress.setRange(0, total)
+            self._update_progress.setValue(received)
+
+    def _record_downloaded_installer(self, path: str) -> None:
+        self._downloaded_installer = Path(path)
+
+    def _record_update_error(self, error: str) -> None:
+        self._download_error = error
+
+    def _cancel_update_download(self) -> None:
+        if self._update_thread is not None:
+            self._update_thread.requestInterruption()
+
+    def _finish_update_download(self) -> None:
+        thread = self._update_thread
+        if thread is None:
+            return
+        cancelled = thread.isInterruptionRequested()
+        thread.deleteLater()
+        self._update_thread = None
+        if self._update_progress is not None:
+            self._update_progress.close()
+            self._update_progress.deleteLater()
+            self._update_progress = None
+        installer = self._downloaded_installer
+        if cancelled or self._download_error is not None or installer is None:
+            if installer is not None:
+                self._discard_update(installer)
+            if not cancelled:
+                QMessageBox.warning(
+                    self, "Update failed", self._download_error or "Installer download failed"
+                )
+            return
+        if not self._confirm_changes():
+            self._discard_update(installer)
+            return
+        try:
+            launch_verified_installer(installer, Path(sys.executable), os.getpid())
+        except OSError as error:
+            self._discard_update(installer)
+            QMessageBox.warning(self, "Update failed", str(error))
+            return
+        self._closing_for_update = True
+        self.close()
+
+    def _discard_update(self, installer: Path) -> None:
+        installer.unlink(missing_ok=True)
+        try:
+            installer.parent.rmdir()
+        except OSError:
+            pass
 
     def _show_update_result(self, update: AvailableUpdate | None) -> None:
         if update is None:
@@ -685,7 +776,11 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
 
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if not self._confirm_changes():
+        if self._update_thread is not None:
+            self._cancel_update_download()
+            event.ignore()
+            return
+        if not self._closing_for_update and not self._confirm_changes():
             event.ignore()
             return
         for index in range(self.document_tabs.count()):
