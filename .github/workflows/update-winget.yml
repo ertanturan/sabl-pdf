@@ -1,0 +1,67 @@
+name: Update WinGet package
+
+on:
+  workflow_run:
+    workflows:
+      - Publish Windows installer
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag (vX.Y.Z); leave empty for latest
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-winget-package
+  cancel-in-progress: false
+
+jobs:
+  update-winget:
+    if: vars.WINGET_ENABLED == 'true' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Resolve release installer
+        id: release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          $tag = $env:REQUESTED_TAG
+          if (-not $tag) {
+            $tag = gh release view --repo $env:GITHUB_REPOSITORY --json tagName --jq '.tagName'
+            if ($LASTEXITCODE -ne 0) { throw 'Could not look up the latest published release.' }
+          }
+          if ($tag -notmatch '^v(\d+\.\d+\.\d+)$') { throw "Unexpected release tag: $tag" }
+          $version = $Matches[1]
+          $releaseJson = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft,isPrerelease,assets
+          if ($LASTEXITCODE -ne 0) { throw "Could not inspect release $tag." }
+          $release = $releaseJson | ConvertFrom-Json
+          if ($release.isDraft -or $release.isPrerelease) { throw 'Only published stable releases may update WinGet.' }
+          $assetName = "Simple-PDF-Setup-$tag-x64.exe"
+          $installers = @($release.assets | Where-Object { $_.name -eq $assetName })
+          if ($installers.Count -ne 1) { throw "Expected one release asset named $assetName." }
+          $installerUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$assetName"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "installer_url=$installerUrl" >> $env:GITHUB_OUTPUT
+      - name: Download WinGet Manifest Creator
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri 'https://aka.ms/wingetcreate/latest' -OutFile wingetcreate.exe
+          if (-not (Test-Path -LiteralPath wingetcreate.exe)) { throw 'WingetCreate download failed.' }
+      - name: Submit WinGet package update
+        shell: pwsh
+        env:
+          WINGET_PAT: ${{ secrets.WINGET_PAT }}
+          INSTALLER_URL: ${{ steps.release.outputs.installer_url }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          if (-not $env:WINGET_PAT) { throw 'Repository secret WINGET_PAT is not configured.' }
+          & ./wingetcreate.exe update SABL.SimplePDF --version $env:VERSION --urls $env:INSTALLER_URL --submit --token $env:WINGET_PAT --no-open
+          if ($LASTEXITCODE -ne 0) { throw 'WinGet manifest update submission failed.' }
