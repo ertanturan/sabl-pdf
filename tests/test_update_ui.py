@@ -294,7 +294,7 @@ def test_update_dialog_displays_remote_notes_without_installer_execution() -> No
     buttons = dialog.findChild(QDialogButtonBox)
 
     assert application is not None
-    assert dialog.windowTitle() == "SABL PDF update available"
+    assert dialog.windowTitle() == "Simple PDF update available"
     assert viewer is not None
     assert "Faster pages." in viewer.toPlainText()
     assert not viewer.openLinks()
@@ -354,3 +354,53 @@ def test_invalid_automatic_response_does_not_show_a_popup(tmp_path, monkeypatch)
     assert window.update_notice.isHidden()
     assert settings.value("updates/last_successful_check") is None
     window.close()
+
+
+def test_update_now_accepts_dialog_and_github_option_remains_available(monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtCore import QUrl
+    from PySide6.QtGui import QDesktopServices
+    from PySide6.QtWidgets import QApplication, QDialog, QPushButton
+
+    from sabl_pdf.services.updates import AvailableUpdate
+    from sabl_pdf.ui.update_available_dialog import UpdateAvailableDialog
+
+    application = QApplication.instance() or QApplication([])
+    release_url = "https://github.com/ertanturan/sabl-pdf/releases/tag/v9.0.0"
+    dialog = UpdateAvailableDialog("1.0.0", AvailableUpdate("9.0.0", "", release_url))
+    install = dialog.findChild(QPushButton, "install_update_button")
+    github = dialog.findChild(QPushButton, "view_release_button")
+    opened = Mock(return_value=True)
+    monkeypatch.setattr(QDesktopServices, "openUrl", opened)
+
+    github.click()
+    install.click()
+
+    assert application is not None
+    assert install.text() == "Update now"
+    assert github.text() == "View on GitHub"
+    opened.assert_called_once_with(QUrl(release_url))
+    assert dialog.result() == QDialog.DialogCode.Accepted
+    dialog.close()
+
+
+def test_source_run_cannot_launch_installer_but_can_view_github() -> None:
+    pytest.importorskip("PySide6")
+    from PySide6.QtWidgets import QApplication, QPushButton
+
+    from sabl_pdf.services.updates import AvailableUpdate
+    from sabl_pdf.ui.update_available_dialog import UpdateAvailableDialog
+
+    application = QApplication.instance() or QApplication([])
+    dialog = UpdateAvailableDialog(
+        "1.0.0",
+        AvailableUpdate("9.0.0", "", "https://github.com/ertanturan/sabl-pdf/releases/tag/v9.0.0"),
+        can_install=False,
+    )
+    install = dialog.findChild(QPushButton, "install_update_button")
+    github = dialog.findChild(QPushButton, "view_release_button")
+
+    assert application is not None
+    assert not install.isEnabled()
+    assert github.isEnabled()
+    dialog.close()
