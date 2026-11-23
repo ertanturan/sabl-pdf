@@ -1,8 +1,7 @@
 # Unreleased
 
 ## New features
-- Install verified updates directly from the update notification.
-- Keep a View on GitHub option beside Update now.
+- None.
 
 ## Bugfixes
 - None.
