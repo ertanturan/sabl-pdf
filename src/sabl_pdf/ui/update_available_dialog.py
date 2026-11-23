@@ -29,9 +29,9 @@ class UpdateAvailableDialog(QDialog):
         if not can_install:
             install.setToolTip("Automatic installation requires the installed Windows application")
         install.clicked.connect(self.accept)
-        buttons.addButton("View on GitHub", QDialogButtonBox.ButtonRole.ActionRole).clicked.connect(
-            self._open_release
-        )
+        view_release = buttons.addButton("View on GitHub", QDialogButtonBox.ButtonRole.ActionRole)
+        view_release.setObjectName("view_release_button")
+        view_release.clicked.connect(self._open_release)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
