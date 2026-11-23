@@ -58,10 +58,10 @@ jobs:
       - name: Submit WinGet package update
         shell: pwsh
         env:
-          WINGET_PAT: ${{ secrets.WINGET_PAT }}
+          WINGET_CREATE_GITHUB_TOKEN: ${{ secrets.WINGET_PAT }}
           INSTALLER_URL: ${{ steps.release.outputs.installer_url }}
           VERSION: ${{ steps.release.outputs.version }}
         run: |
-          if (-not $env:WINGET_PAT) { throw 'Repository secret WINGET_PAT is not configured.' }
-          & ./wingetcreate.exe update SABL.SimplePDF --version $env:VERSION --urls $env:INSTALLER_URL --submit --token $env:WINGET_PAT --no-open
+          if (-not $env:WINGET_CREATE_GITHUB_TOKEN) { throw 'Repository secret WINGET_PAT is not configured.' }
+          & ./wingetcreate.exe update SABL.SimplePDF --version $env:VERSION --urls $env:INSTALLER_URL --submit --no-open
           if ($LASTEXITCODE -ne 0) { throw 'WinGet manifest update submission failed.' }
