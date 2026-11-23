@@ -75,6 +75,7 @@
 
 ## Change logs
 - Keep every release changelog bullet to 100 characters maximum, including its `- ` prefix. Split long details into separate bullets without omitting material facts.
+- Update `docs/changelog/current.md` in the same PR as each release-worthy feature, fix or documentation change. Keep `- None.` only for empty sections; never bypass the release-notes guard.
 - Record EVERY feature and bug fix in `docs/changes/YYYY-MM-DD.md` using the date of the change.
 - Each entry includes change, branch, commit scope and corresponding test coverage.
 - Append entries; never overwrite earlier records from the same date.
