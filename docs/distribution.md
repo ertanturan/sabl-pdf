@@ -41,6 +41,21 @@ Capture and upload genuine application screenshots showing the viewer and at lea
 
 Follow [Microsoft's manifest guidance](https://learn.microsoft.com/en-us/windows/package-manager/package/manifest). Do not advertise a `winget install` command until the package is accepted.
 
+### Automatically submit updates after releases
+
+The `.github/workflows/update-winget.yml` workflow runs after a successful **Publish Windows installer** workflow, or can be started manually from **Actions > Update WinGet package** with an optional published release tag.
+
+Enable this only **after the first `SABL.SimplePDF` package has been approved and merged** in `microsoft/winget-pkgs`:
+
+1. Create a [GitHub classic personal access token](https://github.com/settings/tokens) with `public_repo` scope. WingetCreate does not support fine-grained tokens for this operation.
+2. Under **Settings > Secrets and variables > Actions > Secrets**, add a repository secret named `WINGET_PAT` containing that token.
+3. Under **Settings > Secrets and variables > Actions > Variables**, set the repository variable `WINGET_ENABLED` to `true`.
+4. Publish a version normally. The workflow resolves the new stable GitHub Release, verifies the expected x64 installer asset and asks WingetCreate to submit an updated manifest PR.
+5. Track the resulting PR at [microsoft/winget-pkgs](https://github.com/microsoft/winget-pkgs/pulls). Microsoft still controls acceptance; do not assume the version is immediately available.
+6. If a submission fails, fix the cause and manually run **Update WinGet package** with the exact release tag. Set `WINGET_ENABLED` to `false` to pause submissions.
+
+The token is passed through WingetCreate's documented `WINGET_CREATE_GITHUB_TOKEN` environment variable, never as a command-line argument. The default `GITHUB_TOKEN` cannot submit PRs to the Microsoft repository. Do not publish the token in logs or files.
+
 ## AlternativeTo submission
 
 1. Register and verify an account on [AlternativeTo](https://alternativeto.net/).
