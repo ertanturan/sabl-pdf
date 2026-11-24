@@ -43,7 +43,7 @@
 - Treat a genuinely failing test as evidence of a defect: fix the production behavior, not the test. Never delete, skip, xfail, mock away, or relax a failing assertion merely to get a green CI result.
 - Change an existing test only after demonstrating its expectation is wrong or obsolete, preserve the intended behavior with equivalent or stronger checks, and explain the evidence in the PR. If the defect cannot be fixed in scope, report the failure and leave CI red; push back on requests to hide it.
 - Run `python -m pytest`, `python -m compileall -q src`, `ruff check .` and `python -m pyright` before opening code-changing PRs.
-- CI skips Python tests, coverage and static checks only when every changed file has a documentation extension (`.md`, `.markdown`, `.mdown`, `.txt`, `.rst`, `.adoc`, `.asciidoc`). Keep the required `unit-tests` job successful through a lightweight documentation-only path. Mixed or unclassifiable changes must run the full checks.
+- CI skips Python tests, coverage and static checks only when every changed file has a documentation extension (`.md`, `.markdown`, `.mdown`, `.txt`, `.rst`, `.adoc`, `.asciidoc`). Keep the required `unit-tests` job successful through a lightweight documentation-only path. Changes under `src/`, `tests/`, `scripts/` or `installer/`, including text fixtures, and mixed or unclassifiable changes must run the full checks.
 - Keep tests deterministic, offline and temporary-file based.
 
 ## Branches and commits
