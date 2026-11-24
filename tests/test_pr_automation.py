@@ -246,6 +246,7 @@ def test_ci_docs_only_skips_expensive_steps_without_skipping_required_check() ->
     assert "github.rest.repos.compareCommitsWithBasehead" in workflow
     assert "file.previous_filename" in workflow
     assert "paths.every(path =>" in workflow
+    assert "!/^(src|tests|scripts|installer)\\//i.test(path)" in workflow
     assert "core.setOutput('run_tests', String(!docsOnly))" in workflow
     assert "runs-on: ${{ needs.merge-check.outputs.run_tests == 'false' && 'ubuntu-latest' || 'windows-latest' }}" in workflow
     assert "if: needs.merge-check.outputs.run_tests == 'false'" in workflow
