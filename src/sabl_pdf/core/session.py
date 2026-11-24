@@ -144,11 +144,11 @@ class DocumentSession:
     def _write_pdf(self, destination: Path, password: str | None) -> None:
         if password is None:
             self.document.save(
-                destination, garbage=4, deflate=True, encryption=fitz.PDF_ENCRYPT_KEEP
+                destination, garbage=4, deflate=True, encryption=getattr(fitz, "PDF_ENCRYPT_KEEP")
             )
             return
         self.document.save(
-            destination, garbage=4, deflate=True, encryption=fitz.PDF_ENCRYPT_AES_256,
+            destination, garbage=4, deflate=True, encryption=getattr(fitz, "PDF_ENCRYPT_AES_256"),
             user_pw=password, owner_pw=password,
         )
 
