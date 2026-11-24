@@ -42,7 +42,8 @@
 - Add or update AAA tests for changed behavior. Do not weaken assertions, exclude production files, or lower the coverage threshold to make checks pass.
 - Treat a genuinely failing test as evidence of a defect: fix the production behavior, not the test. Never delete, skip, xfail, mock away, or relax a failing assertion merely to get a green CI result.
 - Change an existing test only after demonstrating its expectation is wrong or obsolete, preserve the intended behavior with equivalent or stronger checks, and explain the evidence in the PR. If the defect cannot be fixed in scope, report the failure and leave CI red; push back on requests to hide it.
-- Run `python -m pytest`, `python -m compileall -q src`, `ruff check .` and `python -m pyright` before opening PRs.
+- Run `python -m pytest`, `python -m compileall -q src`, `ruff check .` and `python -m pyright` before opening code-changing PRs.
+- CI skips Python tests, coverage and static checks only when every changed file has a documentation extension (`.md`, `.markdown`, `.mdown`, `.txt`, `.rst`, `.adoc`, `.asciidoc`). Keep the required `unit-tests` job successful through a lightweight documentation-only path. Mixed or unclassifiable changes must run the full checks.
 - Keep tests deterministic, offline and temporary-file based.
 
 ## Branches and commits
@@ -69,7 +70,7 @@
 - After each push, rebase, or changed PR base, wait for CI on the latest head SHA to finish. Use `gh pr checks <number> --watch` or the Actions run page; never rely on checks from a previous commit.
 - Check that each PR is free of merge conflicts with its immediate base. Resolve real conflicts before rerunning test jobs; never overwrite or discard another change merely to force a clean merge.
 - Investigate every failed, cancelled, or unexpectedly skipped required check. Read its GitHub Actions job and step logs with `gh run view <run-id> --log-failed`; reproduce the cause, implement the fix, push and recheck.
-- Do not mark a PR ready while `merge-check` or `unit-tests` is pending, skipped, failing, or older than its current head. The 80% coverage requirement and all static checks remain mandatory.
+- Do not mark a PR ready while `merge-check` or the required `unit-tests` job is pending, skipped, failing, or older than its current head. The full coverage and static checks remain mandatory for code changes; a successful documentation-only `unit-tests` job may omit the Python steps.
 - Verify stacked PRs parent-first, then check each child again after its parent is rebased or merged. Never auto-merge.
 - If conflicts or CI failures cannot be fixed, record the exact failing check and blocker in the PR; leave the PR unmerged instead of bypassing the gate.
 
