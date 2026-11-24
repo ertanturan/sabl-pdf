@@ -46,7 +46,7 @@ class DocumentSession:
         self._path = candidate
         self._dirty = False
         self._open_warnings = warnings
-        self._password = password if new_document.is_encrypted else None
+        self._password = password if new_document.needs_pass else None
         if previous is not None:
             previous.close()
 
@@ -113,7 +113,7 @@ class DocumentSession:
         else:
             self._rewrite_pdf(destination, password, credentials, same_file)
         self._path = destination
-        self._password = credentials if self.document.is_encrypted else None
+        self._password = credentials if self.document.needs_pass else None
         self._dirty = False
         return destination
 

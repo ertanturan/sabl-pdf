@@ -51,8 +51,10 @@ def test_open_encrypted_pdf_with_password(encrypted_pdf: Path) -> None:
     session.open(encrypted_pdf, password="secret")
 
     assert session.path == encrypted_pdf
-    assert session.document.is_encrypted
+    assert session.document.needs_pass
     assert "Hello SABL" in session.document[0].get_text()
+    with fitz.open(encrypted_pdf) as locked:
+        assert locked.is_encrypted
     session.close()
 
 
