@@ -64,8 +64,8 @@ def test_protect_pdf_uses_aes_256(session: DocumentSession, tmp_path: Path) -> N
     assert result == destination
     with fitz.open(destination) as document:
         assert document.needs_pass
-        assert document.metadata["encryption"] == "Standard V5 R6 256-bit AES"
         assert document.authenticate("new-secret")
+        assert document.metadata["encryption"] == "Standard V5 R6 256-bit AES"
         assert "Hello SABL" in document[0].get_text()
     assert session.path == destination
     assert not session.dirty

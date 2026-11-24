@@ -153,6 +153,9 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._action(file_menu, "Close tab", self._close_current_tab, "Ctrl+W")
         self._action(file_menu, "Save", self.save_pdf, "Ctrl+S")
         self._action(file_menu, "Save as", self.save_as)
+        self.protect_pdf_action = self._action(
+            file_menu, "Protect with password", self.protect_pdf
+        )
         self._action(file_menu, "Copy page text", self.copy_page_text)
         self._action(file_menu, "Copy selected text", self.copy_selection, "Ctrl+C")
         file_menu.addSeparator()
@@ -488,7 +491,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self.document_tabs.setTabText(index, tab.title())
         self.setWindowTitle(f"{DISPLAY_NAME} | {tab.title()}")
 
-    def _open_document(self, path: str | Path) -> None:
+    def _open_document(self, path: str | Path, password: str | None = None) -> None:
         requested = Path(path)
         for index in range(self.document_tabs.count()):
             tab = self.document_tabs.widget(index)
@@ -500,7 +503,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             if not self.document_tabs.count() and self._initial_session is not None
             else DocumentSession()
         )
-        session.open(requested)
+        session.open(requested, password=password)
         tab = DocumentTab(session, self.document_tabs)
         self._connect_tab(tab)
         self.document_tabs.addTab(tab, tab.title())
