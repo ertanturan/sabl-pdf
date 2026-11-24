@@ -404,3 +404,36 @@ def test_source_run_cannot_launch_installer_but_can_view_github() -> None:
     assert not install.isEnabled()
     assert github.isEnabled()
     dialog.close()
+
+
+def test_install_handoff_uses_version_of_downloaded_installer(tmp_path, monkeypatch) -> None:
+    pytest.importorskip("PySide6")
+    from pathlib import Path
+    from PySide6.QtCore import QSettings
+    from PySide6.QtWidgets import QApplication
+
+    from sabl_pdf.services.updates import AvailableUpdate
+    from sabl_pdf.ui.window import MainWindow
+
+    application = QApplication.instance() or QApplication([])
+    settings = QSettings(str(tmp_path / "install.ini"), QSettings.Format.IniFormat)
+    window = MainWindow(settings=settings)
+    installer = tmp_path / "Simple-PDF-Setup-v1.0.4-x64.exe"
+    app_path = tmp_path / "Simple PDF.exe"
+    installer.write_bytes(b"verified")
+    window._downloaded_installer = installer
+    window._downloading_version = "1.0.4"
+    window._available_update = AvailableUpdate("9.0.0", "", "https://example.com")
+    window._update_thread = Mock()
+    window._update_thread.isInterruptionRequested.return_value = False
+    launch = Mock()
+    monkeypatch.setattr("sabl_pdf.ui.window.launch_verified_installer", launch)
+    monkeypatch.setattr("sabl_pdf.ui.window.sys.executable", str(app_path))
+    monkeypatch.setattr("sabl_pdf.ui.window.os.getpid", Mock(return_value=1234))
+
+    window._finish_update_download()
+
+    assert application is not None
+    launch.assert_called_once_with(installer, Path(app_path), 1234, "1.0.4")
+    assert window._downloading_version is None
+    assert window._closing_for_update is True
