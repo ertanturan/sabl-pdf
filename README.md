@@ -10,7 +10,8 @@ The Windows x64 installer is named `Simple-PDF-Setup-vX.Y.Z-x64.exe`. Download i
 
 Watch a short preview of the Windows app before downloading it.
 
-https://github.com/user-attachments/assets/018b59c9-d6df-444e-9efa-a0dfa5ada268
+https://github.com/user-attachments/assets/ad9e1e8d-7f44-4a89-9dfa-625e05329d27
+
 
 ## Features
 
