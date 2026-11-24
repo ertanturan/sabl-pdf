@@ -40,19 +40,19 @@ class DocumentSession:
 
     def open(self, path: str | Path, password: str | None = None) -> None:
         candidate = Path(path)
-        new_document, warnings = self._load_pdf(candidate, password)
+        new_document, warnings, protected = self._load_pdf(candidate, password)
         previous = self._document
         self._document = new_document
         self._path = candidate
         self._dirty = False
         self._open_warnings = warnings
-        self._password = password if new_document.needs_pass else None
+        self._password = password if protected else None
         if previous is not None:
             previous.close()
 
     def _load_pdf(
         self, candidate: Path, password: str | None = None
-    ) -> tuple[fitz.Document, bool]:
+    ) -> tuple[fitz.Document, bool, bool]:
         fitz.TOOLS.mupdf_warnings()
         try:
             document = fitz.open(candidate)
@@ -62,19 +62,21 @@ class DocumentSession:
             document.close()
             raise ValueError("The selected file is not a PDF")
         try:
-            self._authenticate(document, password)
-            return document, self._check_pdf_warnings(document)
+            protected = self._authenticate(document, password)
+            return document, self._check_pdf_warnings(document), protected
         except Exception:
             document.close()
             raise
 
-    def _authenticate(self, document: fitz.Document, password: str | None) -> None:
-        if not document.needs_pass:
-            return
+    def _authenticate(self, document: fitz.Document, password: str | None) -> bool:
+        protected = bool(document.needs_pass)
+        if not protected:
+            return False
         if password is None:
             raise PdfPasswordRequiredError("This PDF requires a password")
         if not document.authenticate(password):
             raise PdfIncorrectPasswordError("Incorrect PDF password")
+        return True
 
     def _check_pdf_warnings(self, document: fitz.Document) -> bool:
         repaired = bool(document.is_repaired)
@@ -113,7 +115,7 @@ class DocumentSession:
         else:
             self._rewrite_pdf(destination, password, credentials, same_file)
         self._path = destination
-        self._password = credentials if self.document.needs_pass else None
+        self._password = credentials
         self._dirty = False
         return destination
 
@@ -124,12 +126,12 @@ class DocumentSession:
         output = destination.with_name(f"{destination.stem}.sabl-tmp.pdf") if same_file else destination
         try:
             self._write_pdf(output, password)
-            replacement, _ = self._load_pdf(output, credentials)
+            replacement, _, _ = self._load_pdf(output, credentials)
             replacement.close()
             if same_file:
                 self.document.close()
                 output.replace(destination)
-            reopened, warnings = self._load_pdf(destination, credentials)
+            reopened, warnings, _ = self._load_pdf(destination, credentials)
             previous = self._document
             self._document = reopened
             self._open_warnings = warnings
