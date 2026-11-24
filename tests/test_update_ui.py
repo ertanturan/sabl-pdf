@@ -425,6 +425,7 @@ def test_install_handoff_uses_version_of_downloaded_installer(tmp_path, monkeypa
     window._downloading_version = "1.0.4"
     window._available_update = AvailableUpdate("9.0.0", "", "https://example.com")
     window._update_thread = Mock()
+    window._update_thread.isInterruptionRequested.return_value = False
     launch = Mock()
     monkeypatch.setattr("sabl_pdf.ui.window.launch_verified_installer", launch)
     monkeypatch.setattr("sabl_pdf.ui.window.sys.executable", str(app_path))
