@@ -17,6 +17,7 @@ https://github.com/user-attachments/assets/018b59c9-d6df-444e-9efa-a0dfa5ada268
 - **Viewing:** Open PDFs in separate tabs, find and select text (including scanned text through local OCR), zoom, use page thumbnails and copy selections.
 - **Text and forms:** Add, edit, move or remove text-box annotations; fill PDF text and checkbox fields.
 - **Signatures:** Draw and reuse a signature, or place a PNG/JPEG signature image.
+- **Password protection:** Open encrypted PDFs using a masked password prompt and save PDFs with AES-256 encryption.
 - **Pages:** Merge PDFs, split page ranges, delete, rotate or reorder pages.
 - **Annotations:** Highlight, underline, add notes and remove annotations.
 - **Redaction:** Redact selected text, page areas or searched phrases into a separate, checked PDF copy.
@@ -73,6 +74,8 @@ Releases are created in this public repository at [GitHub Releases](https://gith
 Before the first release, enable **Settings > General > Releases > Enable release immutability** to protect published tags, notes and assets. If a release run fails, check its logs and inspect any leftover draft release or branch before retrying. Existing local builds remain version-neutral unless you pass `-Minor`, `-Secondary`, or `-Major`; they do not publish releases.
 
 After launching, open a PDF with **Ctrl+O** or drop one onto the welcome screen. Use **Ctrl+F** to search, **Ctrl+S** to save, or **File > Save as** to write a separate copy.
+
+To encrypt a PDF, choose **File > Protect with password**, enter and confirm a nonempty password, then choose the protected PDF's destination. By default, the file chooser suggests a `-protected.pdf` copy to preserve the original. The same password is used for opening and owner access, with no separate permission restrictions. Existing encrypted PDFs stay encrypted on normal Save and Save as. Passwords stay in application memory only while the document is open. Lost passwords cannot be recovered; keep a safe copy. Rewriting an encrypted file may invalidate existing digital signatures.
 
 ### Build and OCR prerequisites
 

@@ -1,5 +1,11 @@
 from pathlib import Path
-from PySide6.QtWidgets import QApplication, QFileDialog
+from PySide6.QtWidgets import (
+    QApplication, QDialog, QFileDialog, QInputDialog, QLineEdit, QMessageBox,
+)
+
+from sabl_pdf.branding import DISPLAY_NAME
+from sabl_pdf.core.session import PdfIncorrectPasswordError, PdfPasswordRequiredError
+from sabl_pdf.ui.password_protection_dialog import PasswordProtectionDialog
 
 
 class ViewerActions:
@@ -10,7 +16,42 @@ class ViewerActions:
             self.open_path(filename)
 
     def open_path(self, path: str | Path) -> None:
-        self._run(lambda: self._open_document(path))
+        password: str | None = None
+        while True:
+            try:
+                self._open_document(path, password=password)
+                return
+            except PdfPasswordRequiredError:
+                pass
+            except PdfIncorrectPasswordError:
+                QMessageBox.warning(self, "Incorrect password", "The PDF password is incorrect.")
+            except Exception as exc:
+                QMessageBox.warning(self, DISPLAY_NAME, str(exc))
+                return
+            password, accepted = QInputDialog.getText(
+                self, "Password required",
+                f"Enter the password for {Path(path).name}:",
+                QLineEdit.EchoMode.Password,
+            )
+            if not accepted:
+                return
+
+    def protect_pdf(self) -> None:
+        if not self._require_document():
+            return
+        dialog = PasswordProtectionDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        original = self.session.path
+        suggested = (
+            str(original.with_name(f"{original.stem}-protected.pdf"))
+            if original is not None else ""
+        )
+        filename, _ = QFileDialog.getSaveFileName(
+            self, "Save password-protected PDF", suggested, "PDF (*.pdf)"
+        )
+        if filename:
+            self._run(lambda: (self.session.save(filename, password=dialog.password), self._refresh()))
 
     def save_pdf(self) -> None:
         if not self._require_document():
