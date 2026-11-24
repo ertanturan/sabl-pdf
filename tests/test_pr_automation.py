@@ -235,3 +235,19 @@ def test_reusing_a_head_branch_for_multiple_prs_is_blocked(root_pr: dict) -> Non
 
     with pytest.raises(ValueError, match="same head branch"):
         order_pulls([root_pr, second])
+
+
+def test_ci_docs_only_skips_expensive_steps_without_skipping_required_check() -> None:
+    workflow_path = Path(__file__).resolve().parents[1] / ".github/workflows/ci.yml"
+
+    workflow = workflow_path.read_text(encoding="utf-8")
+
+    assert "github.rest.pulls.listFiles" in workflow
+    assert "github.rest.repos.compareCommitsWithBasehead" in workflow
+    assert "file.previous_filename" in workflow
+    assert "paths.every(path =>" in workflow
+    assert "core.setOutput('run_tests', String(!docsOnly))" in workflow
+    assert "runs-on: ${{ needs.merge-check.outputs.run_tests == 'false' && 'ubuntu-latest' || 'windows-latest' }}" in workflow
+    assert "if: needs.merge-check.outputs.run_tests == 'false'" in workflow
+    assert workflow.count("if: needs.merge-check.outputs.run_tests == 'true'") == 8
+    assert "  unit-tests:" in workflow
