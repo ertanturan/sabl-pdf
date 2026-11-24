@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/018b59c9-d6df-444e-9efa-a0dfa5ada268
 
 - **Python 3.12+** for the application and PDF services.
 - **PySide6 (Qt)** for the Windows desktop interface.
-- **PyMuPDF** for PDF rendering, text extraction and document operations.
+- **PyMuPDF 1.25 to 1.27.x** for PDF rendering, text extraction and document operations. Version 1.28.2 fails encrypted-document regression tests on Windows.
 - **Pillow** for image handling; **Tesseract OCR** for scanned-page text recognition through PyMuPDF.
 - **PyInstaller** for executable packaging and **Inno Setup 6** for the Windows installer.
 
