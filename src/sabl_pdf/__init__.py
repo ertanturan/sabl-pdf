@@ -1,3 +1,3 @@
 """SABL PDF, an offline Windows PDF utility."""
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
