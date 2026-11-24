@@ -60,6 +60,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         self._update_thread: UpdateDownloadThread | None = None
         self._update_progress: QProgressDialog | None = None
         self._downloaded_installer: Path | None = None
+        self._downloading_version: str | None = None
         self._download_error: str | None = None
         self._closing_for_update = False
         self._initial_session = session
@@ -315,7 +316,8 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
         progress.setAutoReset(False)
         progress.canceled.connect(self._cancel_update_download)
         self._update_progress = progress
-        thread = UpdateDownloadThread(self._available_update.version)
+        self._downloading_version = self._available_update.version
+        thread = UpdateDownloadThread(self._downloading_version)
         self._update_thread = thread
         thread.progress.connect(self._report_update_progress)
         thread.downloaded.connect(self._record_downloaded_installer)
@@ -352,7 +354,9 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self._update_progress.deleteLater()
             self._update_progress = None
         installer = self._downloaded_installer
-        if cancelled or self._download_error is not None or installer is None:
+        version = self._downloading_version
+        self._downloading_version = None
+        if cancelled or self._download_error is not None or installer is None or version is None:
             if installer is not None:
                 self._discard_update(installer)
             if not cancelled:
@@ -364,7 +368,7 @@ class MainWindow(ViewerActions, TextActions, SignatureActions, PageActions, Anno
             self._discard_update(installer)
             return
         try:
-            launch_verified_installer(installer, Path(sys.executable), os.getpid())
+            launch_verified_installer(installer, Path(sys.executable), os.getpid(), version)
         except OSError as error:
             self._discard_update(installer)
             QMessageBox.warning(self, "Update failed", str(error))
