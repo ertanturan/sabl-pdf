@@ -10,6 +10,8 @@ permissions:
 jobs:
   merge-check:
     runs-on: ubuntu-latest
+    outputs:
+      run_tests: ${{ steps.changes.outputs.run_tests }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,22 +24,74 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: python scripts/check_pr_merge.py
+      - name: Classify changed files
+        id: changes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            let files = [];
+            let complete = false;
+            try {
+              if (context.eventName === 'pull_request') {
+                files = await github.paginate(github.rest.pulls.listFiles, {
+                  owner, repo, pull_number: context.issue.number, per_page: 100
+                });
+                complete = files.length < 3000;
+              } else if (context.eventName === 'push' && context.payload.before && !/^0+$/.test(context.payload.before)) {
+                const comparison = await github.rest.repos.compareCommitsWithBasehead({
+                  owner, repo, basehead: `${context.payload.before}...${context.sha}`
+                });
+                files = comparison.data.files ?? [];
+                complete = files.length < 300 && comparison.data.total_commits <= 250;
+              } else if (context.eventName === 'workflow_dispatch') {
+                const branch = context.ref.replace('refs/heads/', '');
+                const prs = await github.paginate(github.rest.pulls.list, {
+                  owner, repo, head: `${owner}:${branch}`, state: 'open', per_page: 100
+                });
+                if (prs.length === 1) {
+                  files = await github.paginate(github.rest.pulls.listFiles, {
+                    owner, repo, pull_number: prs[0].number, per_page: 100
+                  });
+                  complete = files.length < 3000;
+                }
+              }
+            } catch (error) {
+              core.warning(`Changed-file lookup failed: ${error.message}. Running full checks.`);
+            }
+            const paths = files.flatMap(file => [file.filename, file.previous_filename].filter(Boolean));
+            const docsOnly = complete && paths.length > 0 &&
+              paths.every(path => /\.(md|markdown|mdown|txt|rst|adoc|asciidoc)$/i.test(path) &&
+                !/^(src|tests|scripts|installer)\//i.test(path));
+            core.info(docsOnly ? 'Documentation-only change: skip Python checks.' : 'Run full Python checks.');
+            core.setOutput('run_tests', String(!docsOnly));
   unit-tests:
     needs: merge-check
     if: needs.merge-check.result == 'success'
-    runs-on: windows-latest
+    runs-on: ${{ needs.merge-check.outputs.run_tests == 'false' && 'ubuntu-latest' || 'windows-latest' }}
     steps:
+      - name: Documentation-only change
+        if: needs.merge-check.outputs.run_tests == 'false'
+        run: echo "Skipping Python checks for documentation-only changes."
       - uses: actions/checkout@v4
+        if: needs.merge-check.outputs.run_tests == 'true'
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
+        if: needs.merge-check.outputs.run_tests == 'true'
         with:
           python-version: '3.12'
       - run: python -m pip install -e '.[dev]'
+        if: needs.merge-check.outputs.run_tests == 'true'
       - run: python -m pytest -q --cov=sabl_pdf --cov-report=term-missing --cov-fail-under=80
+        if: needs.merge-check.outputs.run_tests == 'true'
         env:
           QT_QPA_PLATFORM: offscreen
       - run: python -m compileall -q src
+        if: needs.merge-check.outputs.run_tests == 'true'
       - run: python -m ruff check .
+        if: needs.merge-check.outputs.run_tests == 'true'
       - run: python -m pyright
+        if: needs.merge-check.outputs.run_tests == 'true'
       - run: python scripts/release.py verify-history
+        if: needs.merge-check.outputs.run_tests == 'true'
